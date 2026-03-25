@@ -1,0 +1,12 @@
+${AnsiStyle.BOLD}${AnsiColor.BRIGHT_WHITE}
+.______    __          ___       ______  __  ___  _______  __          ___           _______. __    __
+|   _  \  |  |        /   \     /      ||  |/  / |   ____||  |        /   \         /       ||  |  |  |
+|  |_)  | |  |       /  ^  \   |  ,----'|  '  /  |  |__   |  |       /  ^  \       |   (----`|  |__|  |
+|   _  <  |  |      /  /_\  \  |  |     |    <   |   __|  |  |      /  /_\  \       \   \    |   __   |
+|  |_)  | |  `----./  _____  \ |  `----.|  .  \  |  |     |  `----./  _____  \  .----)   |   |  |  |  |
+|______/  |_______/__/     \__\ \______||__|\__\ |__|     |_______/__/     \__\ |_______/    |__|  |__|
+                                                                  
+${AnsiStyle.NORMAL}${AnsiColor.YELLOW}
+${info.app.artifactId} ${info.app.artifactVersion}
+Powered by Spring Boot ${spring-boot.version}
+${AnsiColor.DEFAULT}

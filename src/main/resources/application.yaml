@@ -1,3 +1,48 @@
+# Infos
+info.app:
+  environment: default
+  artifactId: "@project.artifactId@"
+  artifactVersion: "@project.version@"
+  description: "@project.description@"
+  locale: Europe/Paris
+
+# Spring
 spring:
   application:
     name: blackflash
+  main:
+    banner-mode: console
+  jackson:
+    default-property-inclusion: non_null
+  threads.virtual.enabled: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health,info,metrics,caches
+  elastic:
+    metrics:
+      export:
+        enabled: on
+        user-name: elastic
+        password: ${ELASTIC_PASSWORD}
+  server:
+    port: 8080
+  health:
+    livenessstate.enabled: true
+    readinessstate.enabled: true
+  info:
+    env.enabled: true
+    java.enabled: true
+  endpoint.health:
+    probes.enabled: true
+    show-details: always
+    status:
+      http-mapping:
+        down: 500
+        warning: 500
+        out-of-service: 503
+      order: down,out-of-service,warning,unknown,up
