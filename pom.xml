@@ -63,6 +63,7 @@
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
         <jda.version>6.4.0</jda.version>
         <lavaplayer.version>2.2.6</lavaplayer.version>
+        <udpqueue-api.version>0.2.12</udpqueue-api.version>
     </properties>
 
     <repositories>
@@ -123,6 +124,11 @@
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
             <version>${jda.version}</version> <!-- replace $version with the latest version -->
+        </dependency>
+        <dependency>
+            <groupId>club.minnced</groupId>
+            <artifactId>udpqueue-api</artifactId>
+            <version>${udpqueue-api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

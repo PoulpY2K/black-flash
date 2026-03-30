@@ -1,16 +1,13 @@
 package fr.fumbus.blackflash.configurations;
 
+import fr.fumbus.blackflash.discord.jda.slash.SlashCommandRegistry;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.exceptions.InvalidTokenException;
 import net.dv8tion.jda.api.requests.restaction.CommandListUpdateAction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Answers;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -30,6 +27,9 @@ class DiscordConfigurationTests {
 
     @Mock(answer = Answers.RETURNS_SELF)
     CommandListUpdateAction updateAction;
+
+    @Mock
+    SlashCommandRegistry slashCommandRegistry;
 
     @Spy
     @InjectMocks

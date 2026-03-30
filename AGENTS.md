@@ -31,7 +31,7 @@ mvn verify
 mvn clean package
 
 # Run the application
-java -jar target/blackflash-main-SNAPSHOT.jar
+java -jar target/blackflash-MANAGE_BY_EXTENSION.jar
 
 # SonarQube analysis
 mvn clean verify sonar:sonar
@@ -87,10 +87,14 @@ The project uses a **custom ObjectMapper** (`ObjectMapperConfiguration`) that:
 
 ### Testing
 - **Framework**: JUnit 5 (Spring Boot Test Suite)
-- **Mocking**: Mockito with javaagent (configured in surefire-plugin)
+- **Mocking**: Mockito 5 with byte-buddy inline mock maker (no javaagent required); `MockedStatic` is used for static method stubbing (e.g., `JDABuilder.createDefault`)
 - **Mock HTTP**: OkHttp3 with MockWebServer is available as test dependencies; no MockWebServer-based tests are currently implemented
 - **Code coverage**: JaCoCo (reports to `target/site/jacoco/` and SonarQube integration)
-- **Current tests**: `src/test/java/fr/fumbus/blackflash/BlackflashApplicationTests.java` only contains a basic `contextLoads()` test
+- **Current tests**:
+  - `BlackflashApplicationTests.java`: `contextLoads()` + `main_setsDefaultTimezoneToEuropeParis()` (uses `MockedStatic<SpringApplication>`)
+  - `DiscordConfigurationTests.java`: invalid token is caught, unexpected exceptions are rethrown, success path builds JDA and registers commands
+  - `ObjectMapperConfigurationTests.java`: full coverage of trimming, snake_case, null exclusion, JSR-310, and `StringTrimmingDeserializer` directly
+  - `SlashCommandListenerTests.java`: listener instantiates without error and extends `ListenerAdapter`
 - **Test reports**: Maven Surefire generates reports in `target/surefire-reports/`
 
 ### Resilience & Observability
@@ -120,8 +124,10 @@ The project uses a **custom ObjectMapper** (`ObjectMapperConfiguration`) that:
 ### Discord API — JDA v6.4.0
 - **Library**: `net.dv8tion:JDA:6.4.0`
 - Integrated through JDA in `DiscordConfiguration`; token comes from `DISCORD_TOKEN` via `application.yaml`
-- `SlashCommandListener` extends JDA's `ListenerAdapter` — register it as an event listener on the `JDA` instance
+- `SlashCommandListener` extends JDA's `ListenerAdapter` — it is instantiated directly with `new SlashCommandListener()` in `DiscordConfiguration.buildJDA()`, **not** a Spring-managed bean
 - Bot uses slash-command interactions; avoid legacy prefix-based message commands
+- **Enabled GatewayIntents**: `GUILD_MEMBERS`, `GUILD_MESSAGES`, `GUILD_VOICE_STATES` (set in `buildJDA()`)
+- **Auto-reconnect** is enabled
 
 ### Audio Playback — Lavaplayer v2.2.6
 - **Library**: `dev.arbjerg:lavaplayer:2.2.6` (pulled from the JitPack repository)
@@ -130,6 +136,8 @@ The project uses a **custom ObjectMapper** (`ObjectMapperConfiguration`) that:
 - **`AudioTrack`** / **`AudioTrackEndReason`**: represent individual tracks and end-of-track events
 - **`AudioLoadResultHandler`**: callback interface used when loading a track URL or search query
 - **`AudioSendHandler`** bridge is required to connect a Lavaplayer `AudioPlayer` to a JDA `AudioManager`
+- **`NativeAudioSendFactory`** (from `com.sedmelluq.discord.lavaplayer.jdaudp`): already wired in `DiscordConfiguration.buildAudioModuleConfig()` as JDA's `AudioModuleConfig`; do not replace this when adding audio features
+- **`udpqueue-api`** (`club.minnced:udpqueue-api:0.2.12`): companion dependency for native UDP audio queue
 - Supported sources out-of-the-box: YouTube, SoundCloud, Bandcamp, Twitch streams, Vimeo, HTTP streams, and local files
 
 ### Data Persistence
@@ -140,6 +148,9 @@ The project uses a **custom ObjectMapper** (`ObjectMapperConfiguration`) that:
 - **Spring Cloud BOM**: v2025.1.1 (managed in `<dependencyManagement>`)
 - **Resilience4J**: For circuit breaking external API calls
 - **Jackson**: Extended with `jackson-datatype-jsr310` for Java time types
+- **commons-lang3** v3.20.0: General-purpose Apache utilities (`org.apache.commons:commons-lang3`)
+- **spring-boot-starter-webmvc**: Spring MVC web layer (serves the REST API surface)
+- **spring-boot-starter-validation**: Bean Validation (Jakarta) for request/DTO validation
 
 ## Code Quality & Analysis
 

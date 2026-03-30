@@ -1,5 +1,6 @@
 package fr.fumbus.blackflash.listeners;
 
+import fr.fumbus.blackflash.discord.jda.slash.SlashCommandListener;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
