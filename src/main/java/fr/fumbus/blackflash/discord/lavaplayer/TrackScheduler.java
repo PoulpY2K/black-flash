@@ -1,55 +1,29 @@
 package fr.fumbus.blackflash.discord.lavaplayer;
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
+import dev.arbjerg.lavalink.client.event.TrackEndEvent;
+import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.log4j.Log4j2;
 
 /**
+ * Handles per-guild track lifecycle events forwarded from the Lavalink client.
+ *
  * @author Jérémy Laurent <poulpy2k>
  * @see "https://github.com/poulpy2k"
  */
 
+@Log4j2
 @RequiredArgsConstructor
-public class TrackScheduler extends AudioEventAdapter {
-    @Override
-    public void onPlayerPause(AudioPlayer player) {
-        // Player was paused
+public class TrackScheduler {
+
+    private final long guildId;
+
+    public void onTrackStart(TrackStartEvent event) {
+        log.info("[Guild {}] Track started: {}", guildId, event.getTrack().getInfo().getTitle());
     }
 
-    @Override
-    public void onPlayerResume(AudioPlayer player) {
-        // Player was resumed
-    }
-
-    @Override
-    public void onTrackStart(AudioPlayer player, AudioTrack track) {
-        // A track started playing
-    }
-
-    @Override
-    public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        if (endReason.mayStartNext) {
-            // Start next track
-        }
-
-        // endReason == FINISHED: A track finished or died by an exception (mayStartNext = true).
-        // endReason == LOAD_FAILED: Loading of a track failed (mayStartNext = true).
-        // endReason == STOPPED: The player was stopped.
-        // endReason == REPLACED: Another track started playing while this had not finished
-        // endReason == CLEANUP: Player hasn't been queried for a while, if you want you can put a
-        //                       clone of this back to your queue
-    }
-
-    @Override
-    public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        // An already playing track threw an exception (track end event will still be received separately)
-    }
-
-    @Override
-    public void onTrackStuck(AudioPlayer player, AudioTrack track, long thresholdMs) {
-        // Audio track has been unable to provide us any audio, might want to just start a new track
+    public void onTrackEnd(TrackEndEvent event) {
+        // TODO: implement queue management (e.g., play next, loop)
+        log.info("[Guild {}] Track ended: {} (reason: {})", guildId, event.getTrack().getInfo().getTitle(), event.getEndReason());
     }
 }

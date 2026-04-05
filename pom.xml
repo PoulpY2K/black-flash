@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
@@ -62,14 +62,15 @@
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <openapi-generator-maven-plugin.version>7.21.0</openapi-generator-maven-plugin.version>
         <jda.version>6.4.0</jda.version>
-        <lavaplayer.version>2.2.6</lavaplayer.version>
         <udpqueue-api.version>0.2.12</udpqueue-api.version>
+        <lavalink-client.version>3.4.0</lavalink-client.version>
     </properties>
 
     <repositories>
         <repository>
-            <id>jitpack</id>
-            <url>https://jitpack.io</url>
+            <id>ll-releases</id>
+            <name>Lavalink Releases</name>
+            <url>https://maven.lavalink.dev/releases</url>
         </repository>
     </repositories>
 
@@ -117,18 +118,13 @@
         <!-- OTHER DEPENDENCIES-->
         <dependency>
             <groupId>dev.arbjerg</groupId>
-            <artifactId>lavaplayer</artifactId>
-            <version>${lavaplayer.version}</version>
+            <artifactId>lavalink-client</artifactId>
+            <version>${lavalink-client.version}</version>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
             <version>${jda.version}</version> <!-- replace $version with the latest version -->
-        </dependency>
-        <dependency>
-            <groupId>club.minnced</groupId>
-            <artifactId>udpqueue-api</artifactId>
-            <version>${udpqueue-api.version}</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

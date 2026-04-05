@@ -1,15 +1,19 @@
 package fr.fumbus.blackflash.discord.jda.slash;
 
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
+import dev.arbjerg.lavalink.client.LavalinkClient;
+import dev.arbjerg.lavalink.client.event.TrackEndEvent;
+import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import fr.fumbus.blackflash.discord.lavaplayer.GuildMusicManager;
 import jakarta.annotation.PostConstruct;
-import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Jérémy Laurent <poulpy2k>
@@ -17,16 +21,28 @@ import java.util.Map;
  */
 
 @Log4j2
-@AllArgsConstructor
+@Getter
+@Component
+@RequiredArgsConstructor
 public class SlashCommandListener extends ListenerAdapter {
     // TODO: add all music logic here, and split into separate services if needed
-    private AudioPlayerManager playerManager;
-    private Map<Long, GuildMusicManager> musicManagers;
+    private final LavalinkClient lavalinkClient;
+    private final Map<Long, GuildMusicManager> musicManagers = new ConcurrentHashMap<>();
 
     @PostConstruct
-    public void init() {
-        this.playerManager = new DefaultAudioPlayerManager();
-        AudioSourceManagers.registerRemoteSources(playerManager);
+    void init() {
+        lavalinkClient.on(TrackStartEvent.class).subscribe(event ->
+                Optional.ofNullable(musicManagers.get(event.getGuildId())).ifPresent(
+                        mng -> mng.trackScheduler.onTrackStart(event)
+                )
+        );
+
+        lavalinkClient.on(TrackEndEvent.class).subscribe(event ->
+                Optional.ofNullable(musicManagers.get(event.getGuildId())).ifPresent(
+                        mng -> mng.trackScheduler.onTrackEnd(event)
+                )
+        );
+
         log.info("SlashCommandListener initialized and ready to handle slash commands.");
     }
 }

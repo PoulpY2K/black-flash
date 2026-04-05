@@ -169,11 +169,14 @@ class ObjectMapperConfigurationTests {
     // Inner test records
     // -------------------------------------------------------------------------
 
-    record TestStringDto(String value) {}
+    record TestStringDto(String value) {
+    }
 
-    record TestSnakeCaseDto(String myField) {}
+    record TestSnakeCaseDto(String myField) {
+    }
 
-    record TestDateDto(LocalDate date) {}
+    record TestDateDto(LocalDate date) {
+    }
 }
 
 

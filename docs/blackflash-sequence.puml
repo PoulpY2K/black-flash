@@ -1,0 +1,182 @@
+@startuml Blackflash — Full Project Sequence Diagram
+
+title Blackflash Discord Music Bot\nFull Sequence Diagram
+
+skinparam sequenceArrowThickness 1.5
+skinparam sequenceGroupBorderThickness 1
+skinparam noteBackgroundColor #FFFDE7
+skinparam noteBorderColor #F9A825
+skinparam sequenceLifeLineBorderColor #555
+skinparam ParticipantBackgroundColor #E8F5E9
+skinparam ParticipantBorderColor #388E3C
+
+actor       "Discord User"         as User
+participant "Discord API"          as Discord
+box "Spring Application" #F3F4F6
+  participant "BlackflashApplication"    as App
+  participant "ObjectMapper\nConfiguration" as ObjMapper
+  participant "LavalinkConfiguration"    as LavalinkConfig
+  participant "SlashCommand\nRegistry"   as Registry
+  participant "SlashCommand\nListener"   as Listener
+  participant "GuildMusic\nManager"      as MusicManager
+  participant "TrackScheduler"           as Scheduler
+  participant "DiscordConfiguration"     as DiscordConfig
+  participant "Spring Actuator"          as Actuator
+end box
+participant "LavalinkClient\n(dev.arbjerg)" as LLClient
+participant "Lavalink v4 Node\n(Docker :2333)" as LLNode
+participant "Elasticsearch"        as Elastic
+
+' ═══════════════════════════════════════════════════════
+== Application Startup ==
+' ═══════════════════════════════════════════════════════
+
+[-> App : main(args)
+activate App
+App -> App : TimeZone.setDefault("Europe/Paris")
+App -> App : SpringApplication.run(BlackflashApplication.class)
+note right of App : @SpringBootApplication\nexcludes DataSourceAutoConfiguration\n& UserDetailsServiceAutoConfiguration
+
+' --- Bean: ObjectMapper ---
+App -> ObjMapper : create @Bean objectMapper()
+activate ObjMapper
+ObjMapper -> ObjMapper : configure SNAKE_CASE, NON_NULL,\nFAIL_ON_UNKNOWN_PROPERTIES=false,\nJavaTimeModule, StringTrimmingDeserializer
+ObjMapper --> App : ObjectMapper bean ready
+deactivate ObjMapper
+
+' --- Bean: LavalinkClient ---
+App -> LavalinkConfig : create @Bean lavalinkClient(token)
+activate LavalinkConfig
+LavalinkConfig -> LLClient ** : new LavalinkClient(\n  Helpers.getUserIdFromToken(token))
+LavalinkConfig -> LLClient : loadBalancer\n  .addPenaltyProvider(\n    VoiceRegionPenaltyProvider, EUROPE)
+LavalinkConfig -> LLClient : addNode(name,\n  ws://uri, password,\n  RegionGroup.EUROPE)
+LLClient -> LLNode : WebSocket connect
+activate LLNode
+LLNode --> LLClient : connection established
+LavalinkConfig -> LLClient : on(ReadyEvent)\n  .subscribe(log info)
+LavalinkConfig -> LLClient : on(StatsEvent)\n  .subscribe(log info)
+LavalinkConfig -> LLClient : on(EmittedEvent)\n  .subscribe(log info)
+LavalinkConfig -> LLClient : node.on(TrackStartEvent)\n  .subscribe(log trace)
+LLNode --> LLClient : ReadyEvent
+LLClient -> LLClient : log "Node '<name>' is ready,\n  session id is '<id>'!"
+LavalinkConfig --> App : LavalinkClient bean ready
+deactivate LavalinkConfig
+
+' --- Bean: SlashCommandRegistry ---
+App -> Registry : create @Component SlashCommandRegistry
+activate Registry
+Registry -> Registry : build List<CommandData>:\n/help, /join, /play (query),\n/skip, /loop, /shuffle,\n/leave, /stop\n[all GUILD context only]
+Registry --> App : SlashCommandRegistry bean ready
+deactivate Registry
+
+' --- Bean: SlashCommandListener ---
+App -> Listener : create @Component SlashCommandListener\n  (inject LavalinkClient)
+activate Listener
+Listener -> Listener : musicManagers =\n  new ConcurrentHashMap<>()
+Listener -> Listener : @PostConstruct init()
+Listener -> LLClient : on(TrackStartEvent)\n  .subscribe(delegate to guild's\n  TrackScheduler)
+Listener -> LLClient : on(TrackEndEvent)\n  .subscribe(delegate to guild's\n  TrackScheduler)
+Listener -> Listener : log "SlashCommandListener\n  initialized and ready"
+Listener --> App : SlashCommandListener bean ready
+deactivate Listener
+
+' --- Bean: DiscordConfiguration ---
+App -> DiscordConfig : create @Configuration DiscordConfiguration\n  (inject SlashCommandRegistry\n   + SlashCommandListener)
+activate DiscordConfig
+DiscordConfig -> DiscordConfig : @PostConstruct initializeJDA()
+DiscordConfig -> DiscordConfig : log "Initializing JDA..."
+DiscordConfig -> Discord : JDABuilder.createDefault(token)\n  .enableIntents(GUILD_MESSAGE_REACTIONS,\n    GUILD_MEMBERS, GUILD_PRESENCES,\n    GUILD_MESSAGES, GUILD_VOICE_STATES)\n  .enableCache(EMOJI, STICKER,\n    SCHEDULED_EVENTS, VOICE_STATE,\n    ONLINE_STATUS, ACTIVITY)\n  .setMemberCachePolicy(ALL)\n  .setChunkingFilter(include(100))\n  .setAutoReconnect(true)\n  .addEventListeners(listener)\n  .build().awaitReady()
+activate Discord
+Discord --> DiscordConfig : JDA instance (ready)
+deactivate Discord
+DiscordConfig -> Discord : jda.updateCommands()\n  .addCommands(registry.getCommands())\n  .queue()
+Discord --> DiscordConfig : commands registered (async)
+DiscordConfig -> DiscordConfig : log "JDA initialized successfully."
+DiscordConfig --> App : DiscordConfiguration ready
+deactivate DiscordConfig
+
+App --> App : Application context started\n(virtual threads enabled)
+deactivate App
+
+' ═══════════════════════════════════════════════════════
+== Periodic: Lavalink Stats Heartbeat ==
+' ═══════════════════════════════════════════════════════
+
+LLNode -> LLClient : StatsEvent (periodic)
+LLClient -> LLClient : log "Node '<name>' has stats:\n  playing=X/Y (links=Z)"
+
+' ═══════════════════════════════════════════════════════
+== Slash Command: /play — Infrastructure (TODO: full handler) ==
+' ═══════════════════════════════════════════════════════
+
+User -> Discord : /play query:"<track URL or search>"
+Discord -> Listener : SlashCommandInteractionEvent
+activate Listener
+note right of Listener : Full music handler\nis TODO — wiring\ninfrastructure exists
+
+Listener -> Listener : get or create GuildMusicManager\nfor event.getGuild().getIdLong()
+Listener -> MusicManager ** : new GuildMusicManager(guildId)
+activate MusicManager
+MusicManager -> Scheduler ** : new TrackScheduler(guildId)
+MusicManager --> Listener : GuildMusicManager
+deactivate MusicManager
+Listener -> Listener : musicManagers.put(guildId, manager)
+
+Listener -> LLClient : loadItem(query)
+LLClient -> LLNode : REST POST /v4/loadtracks?identifier=<query>
+LLNode --> LLClient : track(s) loaded
+LLClient -> LLNode : WebSocket PLAY (guildId, track)
+LLNode -> Discord : audio stream (UDP / voice gateway)
+Discord -> User : 🎵 audio playback
+deactivate Listener
+
+' ═══════════════════════════════════════════════════════
+== Track Lifecycle: TrackStartEvent ==
+' ═══════════════════════════════════════════════════════
+
+LLNode -> LLClient : TrackStartEvent (guildId, track)
+LLClient -> Listener : TrackStartEvent subscriber (from init())
+activate Listener
+Listener -> Listener : musicManagers.get(guildId)
+Listener -> Scheduler : trackScheduler.onTrackStart(event)
+activate Scheduler
+Scheduler -> Scheduler : log "[Guild guildId]\n  Track started: <title>"
+deactivate Scheduler
+deactivate Listener
+
+' Also fires to infrastructure listener in LavalinkConfiguration
+LLClient -> LLClient : EmittedEvent subscriber:\n  log "Node emitted TrackStartEvent"
+
+' ═══════════════════════════════════════════════════════
+== Track Lifecycle: TrackEndEvent ==
+' ═══════════════════════════════════════════════════════
+
+LLNode -> LLClient : TrackEndEvent (guildId, track, endReason)
+LLClient -> Listener : TrackEndEvent subscriber (from init())
+activate Listener
+Listener -> Listener : musicManagers.get(guildId)
+Listener -> Scheduler : trackScheduler.onTrackEnd(event)
+activate Scheduler
+Scheduler -> Scheduler : log "[Guild guildId]\n  Track ended: <title>\n  (reason: <endReason>)"
+note right of Scheduler : Queue management\n(next track / loop)\nis TODO
+deactivate Scheduler
+deactivate Listener
+
+' ═══════════════════════════════════════════════════════
+== Observability: Health Probe ==
+' ═══════════════════════════════════════════════════════
+
+User -> Actuator : GET :8080/actuator/health
+activate Actuator
+Actuator --> User : 200 OK\n{\n  "status": "UP",\n  "liveness": "CORRECT",\n  "readiness": "ACCEPTING_TRAFFIC"\n}
+deactivate Actuator
+
+' ═══════════════════════════════════════════════════════
+== Observability: Metrics Export ==
+' ═══════════════════════════════════════════════════════
+
+Actuator -> Elastic : POST metrics (Micrometer / elastic export)\n[requires ELASTIC_PASSWORD env var]
+note right of Elastic : management.elastic\n  .metrics.export\n  .enabled=true
+
+@enduml
+

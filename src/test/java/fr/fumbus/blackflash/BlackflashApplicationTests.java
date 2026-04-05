@@ -1,15 +1,18 @@
 package fr.fumbus.blackflash;
 
+import dev.arbjerg.lavalink.client.LavalinkClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.TimeZone;
 
@@ -21,6 +24,9 @@ import static org.mockito.Mockito.mockStatic;
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
 class BlackflashApplicationTests {
+
+    @MockitoBean(answers = Answers.RETURNS_DEEP_STUBS)
+    LavalinkClient lavalinkClient;
 
     @Mock
     ConfigurableApplicationContext mockContext;

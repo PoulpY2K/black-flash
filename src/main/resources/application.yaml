@@ -7,8 +7,13 @@ info.app:
   locale: Europe/Paris
 
 discord:
-    token: ${DISCORD_TOKEN:none}
-    activity: "v${info.app.artifactVersion} | /help"
+  token: ${DISCORD_TOKEN:none}
+  activity: "v${info.app.artifactVersion} | /help"
+
+lavalink:
+  name: ${LAVALINK_NAME:blackflash}
+  uri: ${LAVALINK_URI:127.0.0.1:2333}
+  password: ${LAVALINK_PASSWORD:youshallnotpass}
 
 # Spring
 spring:
