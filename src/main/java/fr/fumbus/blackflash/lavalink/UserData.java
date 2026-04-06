@@ -1,4 +1,4 @@
-package fr.fumbus.blackflash.discord.lavalink;
+package fr.fumbus.blackflash.lavalink;
 
 /**
  * @author Jérémy Laurent <poulpy2k>

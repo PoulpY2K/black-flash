@@ -1,10 +1,10 @@
-package fr.fumbus.blackflash.discord.jda.slash;
+package fr.fumbus.blackflash.discord.slash;
 
 import dev.arbjerg.lavalink.client.LavalinkClient;
 import dev.arbjerg.lavalink.client.event.TrackEndEvent;
 import dev.arbjerg.lavalink.client.event.TrackStartEvent;
-import fr.fumbus.blackflash.discord.lavalink.GuildMusicManager;
-import fr.fumbus.blackflash.discord.lavalink.TrackScheduler;
+import fr.fumbus.blackflash.lavalink.GuildMusicManager;
+import fr.fumbus.blackflash.lavalink.TrackScheduler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.function.Consumer;
 
-import static fr.fumbus.blackflash.discord.jda.slash.SlashCommandConstants.*;
+import static fr.fumbus.blackflash.discord.slash.SlashCommandConstants.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;

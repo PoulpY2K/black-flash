@@ -1,10 +1,12 @@
-package fr.fumbus.blackflash.discord.lavalink;
+package fr.fumbus.blackflash.lavalink;
 
 import dev.arbjerg.lavalink.client.Link;
 import dev.arbjerg.lavalink.client.event.TrackEndEvent;
 import dev.arbjerg.lavalink.client.event.TrackStartEvent;
 import dev.arbjerg.lavalink.client.player.LavalinkPlayer;
 import dev.arbjerg.lavalink.client.player.Track;
+import fr.fumbus.blackflash.lavalink.GuildMusicManager;
+import fr.fumbus.blackflash.lavalink.TrackScheduler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;

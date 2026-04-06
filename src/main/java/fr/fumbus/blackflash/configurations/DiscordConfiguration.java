@@ -3,7 +3,7 @@ package fr.fumbus.blackflash.configurations;
 import club.minnced.discord.jdave.interop.JDaveSessionFactory;
 import dev.arbjerg.lavalink.client.LavalinkClient;
 import dev.arbjerg.lavalink.libraries.jda.JDAVoiceUpdateListener;
-import fr.fumbus.blackflash.discord.jda.slash.SlashCommandListener;
+import fr.fumbus.blackflash.discord.slash.SlashCommandListener;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;

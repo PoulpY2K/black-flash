@@ -63,7 +63,7 @@ The project uses a **custom `JsonMapper`** (`ObjectMapperConfiguration`) that:
 - Ignores unknown JSON properties (does NOT fail on extra fields)
 - Supports `java.time.*` classes via `DateTimeFeature.WRITE_DATES_WITH_ZONE_ID` (built into Jackson 3.x)
 
-**Jackson 3.x (Spring Boot 4)**: All imports use `tools.jackson.*` (not `com.fasterxml.jackson.*`).
+**Jackson 3.x (Spring Boot 4)**: Core API imports use `tools.jackson.*` (not `com.fasterxml.jackson.*`); Jackson annotation imports (e.g., `@JsonInclude`) remain in `com.fasterxml.jackson.annotation.*` — that package did not move.
 `StringTrimmingDeserializer`
 extends `ValueDeserializer<String>`, and the bean type is `JsonMapper` (not `ObjectMapper`). There is no separate
 `jackson-datatype-jsr310` dependency — JSR-310 support is built in.
@@ -152,13 +152,13 @@ JSON names map correctly.
 | `src/main/java/.../configurations/DiscordConfiguration.java`      | Creates and initializes JDA using `discord.token`/`discord.activity` properties; injects `SlashCommandListener` and `LavalinkClient`; sets `JDAVoiceUpdateListener(lavalink)` as voice dispatch interceptor; enables DAVE E2E audio encryption via `AudioModuleConfig` + `JDaveSessionFactory` |
 | `src/main/java/.../configurations/LavalinkConfiguration.java`     | Creates the `LavalinkClient` Spring bean; registers Lavalink nodes and infrastructure event listeners                                                                                                                             |
 | `src/main/java/.../configurations/ObjectMapperConfiguration.java` | Custom Jackson `JsonMapper` bean with string trimming & snake_case deserialization (Jackson 3.x / `tools.jackson.*`)                                                                                                              |
-| `src/main/java/.../discord/jda/slash/SlashCommandConstants.java`  | `@UtilityClass` holding string constants for all slash command names (e.g., `COMMAND_PLAY`, `COMMAND_JOIN`)                                                                                                                       |
-| `src/main/java/.../discord/jda/slash/SlashCommandListener.java`   | Spring `@Component`; extends `ListenerAdapter`; holds per-guild `GuildMusicManager` map; registers commands in `onReady()`; handles `/join`, `/play`, `/stop`, `/leave`; subscribes to Lavalink track events via `@PostConstruct` |
-| `src/main/java/.../discord/jda/slash/SlashCommandRegistry.java`   | Spring `@Component`; builds and exposes all `CommandData` objects (help, join, play, skip, loop, shuffle, leave, stop)                                                                                                            |
-| `src/main/java/.../discord/lavalink/AudioLoader.java`             | Per-query `AbstractAudioLoadResultHandler`; handles `ontrackLoaded`, `onPlaylistLoaded`, `onSearchResultLoaded`, `noMatches`, `loadFailed`; delegates to `TrackScheduler.enqueue()`                                               |
-| `src/main/java/.../discord/lavalink/UserData.java`                | Record `UserData(long requester)` — attached to each `Track` to store the requesting user's ID                                                                                                                                    |
-| `src/main/java/.../discord/lavalink/GuildMusicManager.java`       | Per-guild manager (not a Spring bean); two constructors: `(long, LavalinkClient)` for normal use and `(TrackScheduler, long, LavalinkClient)` for test injection; exposes `stop()` (clears queue, calls `setPaused(false).setTrack(null).subscribe()`), `getLink()`, `getPlayer()`, `getTrackScheduler()`, `getGuildId()` |
-| `src/main/java/.../discord/lavalink/TrackScheduler.java`          | Per-guild Lavalink event handler; queue management implemented: `enqueue()`, `enqueuePlaylist()`, `startTrack()`; `onTrackStart`/`onTrackEnd` log only (TODO: send Discord messages)                                              |
+| `src/main/java/.../discord/slash/SlashCommandConstants.java`      | `@UtilityClass` holding string constants for all slash command names (e.g., `COMMAND_PLAY`, `COMMAND_JOIN`)                                                                                                                       |
+| `src/main/java/.../discord/slash/SlashCommandListener.java`       | Spring `@Component`; extends `ListenerAdapter`; holds per-guild `GuildMusicManager` map; registers commands in `onReady()`; handles `/join`, `/play`, `/stop`, `/leave`; subscribes to Lavalink track events via `@PostConstruct` |
+| `src/main/java/.../discord/slash/SlashCommandRegistry.java`       | Spring `@Component`; builds and exposes all `CommandData` objects (help, join, play, skip, loop, shuffle, leave, stop)                                                                                                            |
+| `src/main/java/.../lavalink/AudioLoader.java`                     | Per-query `AbstractAudioLoadResultHandler`; handles `ontrackLoaded`, `onPlaylistLoaded`, `onSearchResultLoaded`, `noMatches`, `loadFailed`; delegates to `TrackScheduler.enqueue()`                                               |
+| `src/main/java/.../lavalink/UserData.java`                        | Record `UserData(long requester)` — attached to each `Track` to store the requesting user's ID                                                                                                                                    |
+| `src/main/java/.../lavalink/GuildMusicManager.java`               | Per-guild manager (not a Spring bean); two constructors: `(long, LavalinkClient)` for normal use and `(TrackScheduler, long, LavalinkClient)` for test injection; exposes `stop()` (clears queue, calls `setPaused(false).setTrack(null).subscribe()`), `getLink()`, `getPlayer()`, `getTrackScheduler()`, `getGuildId()` |
+| `src/main/java/.../lavalink/TrackScheduler.java`                  | Per-guild Lavalink event handler; queue management implemented: `enqueue()`, `enqueuePlaylist()`, `startTrack()`; `onTrackStart`/`onTrackEnd` log only (TODO: send Discord messages)                                              |
 | `src/main/resources/application.yaml`                             | Runtime config: actuator endpoints, caching, metrics export, health probes                                                                                                                                                        |
 | `src/main/resources/api-spec/blackflash-api.yaml`                 | OpenAPI 3.1.1 specification (currently minimal)                                                                                                                                                                                   |
 | `docker-compose.yml`                                              | Starts a Lavalink v4 (alpine) container on `127.0.0.1:2333` for local development                                                                                                                                                 |
@@ -188,7 +188,7 @@ JSON names map correctly.
   (`jdave-native-win-x86-64` or `jdave-native-linux-x86-64`)
 - **Voice dispatch interceptor**: `new JDAVoiceUpdateListener(lavalink)` is set via `JDABuilder.setVoiceDispatchInterceptor()`; this bridges JDA voice state update events to the Lavalink client
 - **Enabled GatewayIntents**: `GUILD_MESSAGE_REACTIONS`, `GUILD_MEMBERS`, `GUILD_PRESENCES`, `GUILD_MESSAGES`,
-  `GUILD_VOICE_STATES` (set in `buildJDA()`)
+  `GUILD_VOICE_STATES` (set in `initializeJDA()`)
 - **Enabled CacheFlags**: `VOICE_STATE`, `ONLINE_STATUS`, `ACTIVITY`
 - **Member caching**: `MemberCachePolicy.ALL`; `ChunkingFilter.include(100)`
 - **Auto-reconnect** is enabled
@@ -207,20 +207,20 @@ JSON names map correctly.
 - **`LavalinkConfiguration`** registers nodes from `lavalink.name` / `lavalink.uri` / `lavalink.password` properties;
   uses `VoiceRegionPenaltyProvider` with `RegionGroup.EUROPE` for load balancing; subscribes to `ReadyEvent`,
   `StatsEvent`, `EmittedEvent`, and `TrackStartEvent` for infrastructure logging
-- **`GuildMusicManager`** (`discord/lavalink/` package): per-guild manager, **not** a Spring bean — instantiated by
+- **`GuildMusicManager`** (`lavalink/` package): per-guild manager, **not** a Spring bean — instantiated by
   `SlashCommandListener` and stored in `musicManagers` (`Map<Long, GuildMusicManager>`); two constructors:
   `(long, LavalinkClient)` for normal use and `(TrackScheduler, long, LavalinkClient)` for test injection; exposes
   `stop()` (clears `trackScheduler.queue`, then calls `player.setPaused(false).setTrack(null).subscribe()` if a player
   is cached), `getLink()`, `getPlayer()`, `getTrackScheduler()`, `getGuildId()`
-- **`TrackScheduler`** (`discord/lavalink/` package): per-guild lifecycle handler; `queue` field is `public
+- **`TrackScheduler`** (`lavalink/` package): per-guild lifecycle handler; `queue` field is `public
   Queue<Track>` (directly accessed in tests); queue management **implemented**: `enqueue()` starts immediately if no
   track is playing, otherwise queues; `enqueuePlaylist()` adds all tracks then starts the first; `startTrack()` calls
   `link.createOrUpdatePlayer()` with volume 50 and `setEndTime(track.getInfo().getLength())`; `onTrackStart`/`onTrackEnd`
   log only (TODO: send Discord messages)
-- **`AudioLoader`** (`discord/lavalink/` package): per-query `AbstractAudioLoadResultHandler`; handles
-  `ontrackLoaded` (attaches `UserData`, calls `enqueue()`), `onPlaylistLoaded` (calls `enqueuePlaylist()`),
+- **`AudioLoader`** (`lavalink/` package): per-query `AbstractAudioLoadResultHandler`; handles
+  `ontrackLoaded` (attaches `UserData`, calls `enqueue()`, sends `"Added to queue: {title}\nRequested by: <@{id}>"` via hook), `onPlaylistLoaded` (calls `enqueuePlaylist()`),
   `onSearchResultLoaded` (picks first result), `noMatches`, `loadFailed`; replies via `event.getHook()`
-- **`UserData`** record (`discord/lavalink/` package): `record UserData(long requester)` — attached to each `Track`
+- **`UserData`** record (`lavalink/` package): `record UserData(long requester)` — attached to each `Track`
   via `track.setUserData(new UserData(event.getUser().getIdLong()))`
 - **`SlashCommandListener`**: subscribes to `TrackStartEvent` and `TrackEndEvent` via `@PostConstruct init()` and
   delegates to the relevant guild's `TrackScheduler`; `getOrCreateMusicManager()` is `@Synchronized`

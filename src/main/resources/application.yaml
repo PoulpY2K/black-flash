@@ -21,8 +21,6 @@ spring:
     name: blackflash
   main:
     banner-mode: console
-  jackson:
-    default-property-inclusion: non_null
   threads.virtual.enabled: true
 
 # Actuator

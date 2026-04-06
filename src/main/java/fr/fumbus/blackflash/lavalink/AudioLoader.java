@@ -1,4 +1,4 @@
-package fr.fumbus.blackflash.discord.lavalink;
+package fr.fumbus.blackflash.lavalink;
 
 import dev.arbjerg.lavalink.client.AbstractAudioLoadResultHandler;
 import dev.arbjerg.lavalink.client.player.*;

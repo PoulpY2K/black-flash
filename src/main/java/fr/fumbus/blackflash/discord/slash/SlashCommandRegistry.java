@@ -1,4 +1,4 @@
-package fr.fumbus.blackflash.discord.jda.slash;
+package fr.fumbus.blackflash.discord.slash;
 
 import lombok.Getter;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-import static fr.fumbus.blackflash.discord.jda.slash.SlashCommandConstants.*;
+import static fr.fumbus.blackflash.discord.slash.SlashCommandConstants.*;
 
 /**
  * Registry that builds and holds all Discord slash commands.

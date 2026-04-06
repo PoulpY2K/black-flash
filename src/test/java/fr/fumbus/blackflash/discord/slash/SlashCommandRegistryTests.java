@@ -1,4 +1,4 @@
-package fr.fumbus.blackflash.discord.jda.slash;
+package fr.fumbus.blackflash.discord.slash;
 
 import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.OptionType;

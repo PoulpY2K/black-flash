@@ -1,7 +1,7 @@
 package fr.fumbus.blackflash.configurations;
 
 import dev.arbjerg.lavalink.client.LavalinkClient;
-import fr.fumbus.blackflash.discord.jda.slash.SlashCommandListener;
+import fr.fumbus.blackflash.discord.slash.SlashCommandListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.exceptions.InvalidTokenException;

@@ -1,5 +1,6 @@
-package fr.fumbus.blackflash.discord.lavalink;
+package fr.fumbus.blackflash.lavalink;
 
+import fr.fumbus.blackflash.lavalink.UserData;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

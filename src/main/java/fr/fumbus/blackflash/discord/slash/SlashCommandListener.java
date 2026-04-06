@@ -1,11 +1,11 @@
-package fr.fumbus.blackflash.discord.jda.slash;
+package fr.fumbus.blackflash.discord.slash;
 
 import dev.arbjerg.lavalink.client.LavalinkClient;
 import dev.arbjerg.lavalink.client.Link;
 import dev.arbjerg.lavalink.client.event.TrackEndEvent;
 import dev.arbjerg.lavalink.client.event.TrackStartEvent;
-import fr.fumbus.blackflash.discord.lavalink.AudioLoader;
-import fr.fumbus.blackflash.discord.lavalink.GuildMusicManager;
+import fr.fumbus.blackflash.lavalink.AudioLoader;
+import fr.fumbus.blackflash.lavalink.GuildMusicManager;
 import jakarta.annotation.PostConstruct;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static fr.fumbus.blackflash.discord.jda.slash.SlashCommandConstants.*;
+import static fr.fumbus.blackflash.discord.slash.SlashCommandConstants.*;
 import static java.util.Objects.nonNull;
 
 /**

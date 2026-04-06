@@ -1,4 +1,4 @@
-package fr.fumbus.blackflash.discord.jda.slash;
+package fr.fumbus.blackflash.discord.slash;
 
 import lombok.experimental.UtilityClass;
 
