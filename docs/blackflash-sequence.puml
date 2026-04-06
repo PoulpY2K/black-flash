@@ -20,6 +20,7 @@ box "Spring Application" #F3F4F6
   participant "SlashCommand\nListener"   as Listener
   participant "GuildMusic\nManager"      as MusicManager
   participant "TrackScheduler"           as Scheduler
+  participant "AudioLoader"              as AudioLoader
   participant "DiscordConfiguration"     as DiscordConfig
   participant "Spring Actuator"          as Actuator
 end box
@@ -37,26 +38,26 @@ App -> App : TimeZone.setDefault("Europe/Paris")
 App -> App : SpringApplication.run(BlackflashApplication.class)
 note right of App : @SpringBootApplication\nexcludes DataSourceAutoConfiguration\n& UserDetailsServiceAutoConfiguration
 
-' --- Bean: ObjectMapper ---
-App -> ObjMapper : create @Bean objectMapper()
+' --- Bean: JsonMapper ---
+App -> ObjMapper : create @Bean jsonMapper()
 activate ObjMapper
-ObjMapper -> ObjMapper : configure SNAKE_CASE, NON_NULL,\nFAIL_ON_UNKNOWN_PROPERTIES=false,\nJavaTimeModule, StringTrimmingDeserializer
-ObjMapper --> App : ObjectMapper bean ready
+ObjMapper -> ObjMapper : configure SNAKE_CASE, NON_NULL,\nFAIL_ON_UNKNOWN_PROPERTIES=false,\nDateTimeFeature.WRITE_DATES_WITH_ZONE_ID,\nStringTrimmingDeserializer
+ObjMapper --> App : JsonMapper bean ready
 deactivate ObjMapper
 
 ' --- Bean: LavalinkClient ---
 App -> LavalinkConfig : create @Bean lavalinkClient(token)
 activate LavalinkConfig
 LavalinkConfig -> LLClient ** : new LavalinkClient(\n  Helpers.getUserIdFromToken(token))
-LavalinkConfig -> LLClient : loadBalancer\n  .addPenaltyProvider(\n    VoiceRegionPenaltyProvider, EUROPE)
-LavalinkConfig -> LLClient : addNode(name,\n  ws://uri, password,\n  RegionGroup.EUROPE)
+LavalinkConfig -> LLClient : loadBalancer\n  .addPenaltyProvider(\n    new VoiceRegionPenaltyProvider())
+LavalinkConfig -> LLClient : addNode(NodeOptions:\n  name, ws://uri, password,\n  RegionFilter=EUROPE)
 LLClient -> LLNode : WebSocket connect
 activate LLNode
 LLNode --> LLClient : connection established
+LavalinkConfig -> LLClient : node.on(TrackStartEvent)\n  .subscribe(log info)
 LavalinkConfig -> LLClient : on(ReadyEvent)\n  .subscribe(log info)
 LavalinkConfig -> LLClient : on(StatsEvent)\n  .subscribe(log info)
-LavalinkConfig -> LLClient : on(EmittedEvent)\n  .subscribe(log info)
-LavalinkConfig -> LLClient : node.on(TrackStartEvent)\n  .subscribe(log trace)
+LavalinkConfig -> LLClient : on(EmittedEvent)\n  .subscribe(log info +\n  debug TrackStartEvent)
 LLNode --> LLClient : ReadyEvent
 LLClient -> LLClient : log "Node '<name>' is ready,\n  session id is '<id>'!"
 LavalinkConfig --> App : LavalinkClient bean ready
@@ -70,30 +71,36 @@ Registry --> App : SlashCommandRegistry bean ready
 deactivate Registry
 
 ' --- Bean: SlashCommandListener ---
-App -> Listener : create @Component SlashCommandListener\n  (inject LavalinkClient)
+App -> Listener : create @Component SlashCommandListener\n  (inject LavalinkClient,\n   SlashCommandRegistry)
 activate Listener
 Listener -> Listener : musicManagers =\n  new ConcurrentHashMap<>()
 Listener -> Listener : @PostConstruct init()
 Listener -> LLClient : on(TrackStartEvent)\n  .subscribe(delegate to guild's\n  TrackScheduler)
 Listener -> LLClient : on(TrackEndEvent)\n  .subscribe(delegate to guild's\n  TrackScheduler)
-Listener -> Listener : log "SlashCommandListener\n  initialized and ready"
 Listener --> App : SlashCommandListener bean ready
 deactivate Listener
 
 ' --- Bean: DiscordConfiguration ---
-App -> DiscordConfig : create @Configuration DiscordConfiguration\n  (inject SlashCommandRegistry\n   + SlashCommandListener)
+App -> DiscordConfig : create @Configuration DiscordConfiguration\n  (inject SlashCommandListener,\n   LavalinkClient)
 activate DiscordConfig
 DiscordConfig -> DiscordConfig : @PostConstruct initializeJDA()
-DiscordConfig -> DiscordConfig : log "Initializing JDA..."
-DiscordConfig -> Discord : JDABuilder.createDefault(token)\n  .enableIntents(GUILD_MESSAGE_REACTIONS,\n    GUILD_MEMBERS, GUILD_PRESENCES,\n    GUILD_MESSAGES, GUILD_VOICE_STATES)\n  .enableCache(EMOJI, STICKER,\n    SCHEDULED_EVENTS, VOICE_STATE,\n    ONLINE_STATUS, ACTIVITY)\n  .setMemberCachePolicy(ALL)\n  .setChunkingFilter(include(100))\n  .setAutoReconnect(true)\n  .addEventListeners(listener)\n  .build().awaitReady()
+DiscordConfig -> DiscordConfig : log "Initializing JDA,\n  registering listeners..."
+DiscordConfig -> Discord : JDABuilder.createDefault(token)\n  .setVoiceDispatchInterceptor(\n    new JDAVoiceUpdateListener(lavalink))\n  .enableIntents(GUILD_MESSAGE_REACTIONS,\n    GUILD_MEMBERS, GUILD_PRESENCES,\n    GUILD_MESSAGES, GUILD_VOICE_STATES)\n  .enableCache(VOICE_STATE,\n    ONLINE_STATUS, ACTIVITY)\n  .setActivity(Activity.listening(activity))\n  .setAutoReconnect(true)\n  .setMemberCachePolicy(ALL)\n  .setChunkingFilter(include(100))\n  .addEventListeners(listener)\n  .setAudioModuleConfig(\n    new AudioModuleConfig()\n      .withDaveSessionFactory(\n        new JDaveSessionFactory()))\n  .build().awaitReady()
 activate Discord
 Discord --> DiscordConfig : JDA instance (ready)
 deactivate Discord
-DiscordConfig -> Discord : jda.updateCommands()\n  .addCommands(registry.getCommands())\n  .queue()
-Discord --> DiscordConfig : commands registered (async)
 DiscordConfig -> DiscordConfig : log "JDA initialized successfully."
 DiscordConfig --> App : DiscordConfiguration ready
 deactivate DiscordConfig
+
+note over Listener, Discord : Commands are registered when\nSlashCommandListener.onReady() fires\n(triggered by JDA ReadyEvent)
+
+Discord -> Listener : ReadyEvent
+activate Listener
+Listener -> Listener : log "{bot} is ready!"
+Listener -> Discord : jda.updateCommands()\n  .addCommands(registry.getCommands())\n  .queue()
+Discord --> Listener : commands registered (async)
+deactivate Listener
 
 App --> App : Application context started\n(virtual threads enabled)
 deactivate App
@@ -103,31 +110,137 @@ deactivate App
 ' ═══════════════════════════════════════════════════════
 
 LLNode -> LLClient : StatsEvent (periodic)
-LLClient -> LLClient : log "Node '<name>' has stats:\n  playing=X/Y (links=Z)"
+LLClient -> LLClient : log "Node '<name>' has stats:\n  playing=X/Y (link count=Z)"
 
 ' ═══════════════════════════════════════════════════════
-== Slash Command: /play — Infrastructure (TODO: full handler) ==
+== Slash Command: /join ==
+' ═══════════════════════════════════════════════════════
+
+User -> Discord : /join
+Discord -> Listener : SlashCommandInteractionEvent
+activate Listener
+Listener -> Listener : joinChannel(event)
+Listener -> Listener : get member voice state
+Listener -> Discord : jda.getDirectAudioController()\n  .connect(memberVoiceChannel)
+Listener -> MusicManager ** : getOrCreateMusicManager(guildId)\n  → new GuildMusicManager(guildId, lavalink)
+activate MusicManager
+MusicManager -> Scheduler ** : new TrackScheduler(this)
+MusicManager --> Listener : GuildMusicManager
+deactivate MusicManager
+Listener -> Discord : reply("Joining your channel!")
+deactivate Listener
+
+' ═══════════════════════════════════════════════════════
+== Slash Command: /play ==
 ' ═══════════════════════════════════════════════════════
 
 User -> Discord : /play query:"<track URL or search>"
 Discord -> Listener : SlashCommandInteractionEvent
 activate Listener
-note right of Listener : Full music handler\nis TODO — wiring\ninfrastructure exists
 
-Listener -> Listener : get or create GuildMusicManager\nfor event.getGuild().getIdLong()
-Listener -> MusicManager ** : new GuildMusicManager(guildId)
+alt Bot already in voice channel
+  Listener -> Discord : event.deferReply(false).queue()
+else Bot NOT in voice channel
+  Listener -> Listener : joinChannel(event)\n  (connect + reply)
+end
+
+Listener -> Listener : query = event.getOption("query")
+Listener -> LLClient : lavalink.getOrCreateLink(guildId)
+LLClient --> Listener : Link
+Listener -> Listener : getOrCreateMusicManager(guildId)
+Listener -> AudioLoader ** : new AudioLoader(event, manager)
+Listener -> LLClient : link.loadItem(query)\n  .subscribe(audioLoader)
+LLClient -> LLNode : REST POST /v4/loadtracks\n  ?identifier=<query>
+deactivate Listener
+
+alt Track loaded
+  LLNode --> LLClient : TrackLoaded result
+  LLClient -> AudioLoader : ontrackLoaded(result)
+  activate AudioLoader
+  AudioLoader -> AudioLoader : track.setUserData(\n  new UserData(userId))
+  AudioLoader -> Scheduler : enqueue(track)
+  activate Scheduler
+
+  alt No current track playing
+    Scheduler -> LLClient : link.createOrUpdatePlayer()\n  .setTrack(track)\n  .setVolume(50)\n  .setEndTime(track.length)\n  .subscribe()
+    LLClient -> LLNode : WebSocket PLAY\n  (guildId, track)
+    LLNode -> Discord : audio stream\n  (UDP / voice gateway)
+    Discord -> User : 🎵 audio playback
+  else Track already playing
+    Scheduler -> Scheduler : queue.offer(track)
+  end
+  deactivate Scheduler
+
+  AudioLoader -> Discord : hook.sendMessage("Added to queue:\n  {title}\nRequested by: <@{id}>")
+  deactivate AudioLoader
+
+else Playlist loaded
+  LLNode --> LLClient : PlaylistLoaded result
+  LLClient -> AudioLoader : onPlaylistLoaded(result)
+  activate AudioLoader
+  AudioLoader -> Discord : hook.sendMessage("Added N\n  tracks from {playlist}")
+  AudioLoader -> Scheduler : enqueuePlaylist(tracks)
+  activate Scheduler
+  Scheduler -> Scheduler : queue.addAll(tracks)
+  alt No current track playing
+    Scheduler -> Scheduler : startTrack(queue.poll())
+  end
+  deactivate Scheduler
+  deactivate AudioLoader
+
+else Search result
+  LLNode --> LLClient : SearchResult
+  LLClient -> AudioLoader : onSearchResultLoaded(result)
+  activate AudioLoader
+  alt tracks not empty
+    AudioLoader -> Discord : hook.sendMessage("Adding to\n  queue: {firstTrack.title}")
+    AudioLoader -> Scheduler : enqueue(firstTrack)
+  else empty results
+    AudioLoader -> Discord : hook.sendMessage(\n  "No tracks found!")
+  end
+  deactivate AudioLoader
+
+else No matches
+  LLNode --> LLClient : NoMatches
+  LLClient -> AudioLoader : noMatches()
+  activate AudioLoader
+  AudioLoader -> Discord : hook.sendMessage(\n  "No matches found\n  for your input!")
+  deactivate AudioLoader
+
+else Load failed
+  LLNode --> LLClient : LoadFailed
+  LLClient -> AudioLoader : loadFailed(result)
+  activate AudioLoader
+  AudioLoader -> Discord : hook.sendMessage(\n  "Failed to load track!\n  {exception.message}")
+  deactivate AudioLoader
+end
+
+' ═══════════════════════════════════════════════════════
+== Slash Command: /stop ==
+' ═══════════════════════════════════════════════════════
+
+User -> Discord : /stop
+Discord -> Listener : SlashCommandInteractionEvent
+activate Listener
+Listener -> MusicManager : getOrCreateMusicManager(guildId)\n  .stop()
 activate MusicManager
-MusicManager -> Scheduler ** : new TrackScheduler(guildId)
-MusicManager --> Listener : GuildMusicManager
+MusicManager -> Scheduler : queue.clear()
+MusicManager -> MusicManager : getPlayer()
+MusicManager -> LLClient : player.setPaused(false)\n  .setTrack(null)\n  .subscribe()
 deactivate MusicManager
-Listener -> Listener : musicManagers.put(guildId, manager)
+Listener -> Discord : reply("Stopped the\n  current track!")
+deactivate Listener
 
-Listener -> LLClient : loadItem(query)
-LLClient -> LLNode : REST POST /v4/loadtracks?identifier=<query>
-LLNode --> LLClient : track(s) loaded
-LLClient -> LLNode : WebSocket PLAY (guildId, track)
-LLNode -> Discord : audio stream (UDP / voice gateway)
-Discord -> User : 🎵 audio playback
+' ═══════════════════════════════════════════════════════
+== Slash Command: /leave ==
+' ═══════════════════════════════════════════════════════
+
+User -> Discord : /leave
+Discord -> Listener : SlashCommandInteractionEvent
+activate Listener
+Listener -> Discord : jda.getDirectAudioController()\n  .disconnect(guild)
+Listener -> Listener : musicManagers\n  .remove(guildId)
+Listener -> Discord : reply("Leaving\n  the channel!")
 deactivate Listener
 
 ' ═══════════════════════════════════════════════════════
@@ -166,7 +279,7 @@ deactivate Listener
 == Observability: Health Probe ==
 ' ═══════════════════════════════════════════════════════
 
-User -> Actuator : GET :8080/actuator/health
+User -> Actuator : GET :54001/actuator/health
 activate Actuator
 Actuator --> User : 200 OK\n{\n  "status": "UP",\n  "liveness": "CORRECT",\n  "readiness": "ACCEPTING_TRAFFIC"\n}
 deactivate Actuator
@@ -176,7 +289,7 @@ deactivate Actuator
 ' ═══════════════════════════════════════════════════════
 
 Actuator -> Elastic : POST metrics (Micrometer / elastic export)\n[requires ELASTIC_PASSWORD env var]
-note right of Elastic : management.elastic\n  .metrics.export\n  .enabled=true
+note right of Elastic : management.elastic\n  .metrics.export\n  .enabled=true\n  (management port 54001)
 
 @enduml
 

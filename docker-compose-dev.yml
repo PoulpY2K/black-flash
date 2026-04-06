@@ -11,7 +11,7 @@ services:
       # set lavalink server port
       - SERVER_PORT=2333
       # set password for lavalink
-      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:-}
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
       - SPOTIFY_ID=${SPOTIFY_ID:-}
       - SPOTIFY_SECRET=${SPOTIFY_SECRET:-}
       - SPOTIFY_DC=${SPOTIFY_DC:-}

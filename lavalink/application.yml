@@ -20,13 +20,13 @@ plugins:
       enabled: true
   lavasrc:
     providers: # Custom providers for track loading. This is the default
-      - "spsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
-      - "spsearch:%QUERY%" # Will be used if track has no ISRC or no track could be found for the ISRC
+      #- "spsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
+      #- "spsearch:%QUERY%" # Will be used if track has no ISRC or no track could be found for the ISRC
       - "ytsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
       - "ytsearch:%QUERY%" # Will be used if track has no ISRC or no track could be found for the ISRC
       #  you can add multiple other fallback sources here
     sources:
-      spotify: true # Enable Spotify source
+      spotify: false # Enable Spotify source
       applemusic: false # Enable Apple Music source
       deezer: false # Enable Deezer source
       yandexmusic: false # Enable Yandex Music source
@@ -45,9 +45,9 @@ plugins:
       vkmusic: false # Enable Vk Music lyrics source
       lrcLib: false # Enable LRC Library lyrics source (https://lrclib.net)
     spotify:
-      clientId: ${SPOTIFY_ID}
-      clientSecret: ${SPOTIFY_SECRET}
-      spDc: ${SPOTIFY_DC} # the sp dc cookie used for accessing the spotify lyrics api
+      clientId: "-"
+      clientSecret: "-"
+      spDc: "-" # the sp dc cookie used for accessing the spotify lyrics api
       countryCode: "FR" # the country code you want to use for filtering the artists top tracks. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
       playlistLoadLimit: 6 # The number of pages at 100 tracks each
       albumLoadLimit: 6 # The number of pages at 50 tracks each
@@ -69,7 +69,7 @@ lavalink:
       repository: "https://maven.lavalink.dev/releases" # this is optional for lavalink v4.0.0-beta.5 or greater
       snapshot: false # set to true if you want to use snapshot builds (see below)
   server:
-    password: ${LAVALINK_PASSWORD}
+    password: "youshallnotpass"
     sources:
       # The default Youtube source is now deprecated and won't receive further updates. Please use https://github.com/lavalink-devs/youtube-source#plugin instead.
       youtube: false

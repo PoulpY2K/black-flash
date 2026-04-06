@@ -22,16 +22,16 @@
 
 ## 🎮 Slash Commands
 
-| Command    | Description                                        |
-|------------|----------------------------------------------------|
-| `/help`    | Display help information                           |
-| `/join`    | Join the voice channel                             |
-| `/play`    | Play a song or playlist from a URL or search query |
-| `/skip`    | Skip the current track                             |
-| `/stop`    | Stop playback and clear the queue                  |
-| `/loop`    | Loop the current track or playlist                 |
-| `/shuffle` | Shuffle the playlist                               |
-| `/leave`   | Leave the voice channel                            |
+| Command    | Description                                        | Status         |
+|------------|----------------------------------------------------|----------------|
+| `/join`    | Join the voice channel                             | ✅ Implemented  |
+| `/play`    | Play a song or playlist from a URL or search query | ✅ Implemented  |
+| `/stop`    | Stop playback and clear the queue                  | ✅ Implemented  |
+| `/leave`   | Leave the voice channel                            | ✅ Implemented  |
+| `/help`    | Display help information                           | 🚧 Planned     |
+| `/skip`    | Skip the current track                             | 🚧 Planned     |
+| `/loop`    | Loop the current track or playlist                 | 🚧 Planned     |
+| `/shuffle` | Shuffle the playlist                               | 🚧 Planned     |
 
 ---
 
@@ -62,7 +62,7 @@ Create a `.env` file or export the following variables:
 # Required
 DISCORD_TOKEN=your-discord-bot-token
 
-# Lavalink (defaults match docker-compose.yml)
+# Lavalink (defaults match docker-compose-dev.yml)
 LAVALINK_NAME=blackflash
 LAVALINK_URI=127.0.0.1:2333
 LAVALINK_PASSWORD=youshallnotpass
@@ -79,7 +79,7 @@ ELASTIC_PASSWORD=your-elastic-password
 ### 3. Start the Lavalink node
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose-dev.yml up -d
 ```
 
 This starts a Lavalink v4 (Alpine) container on `127.0.0.1:2333` with the configuration from `lavalink/application.yml` and pre-downloaded plugins.
@@ -122,31 +122,6 @@ mvn clean verify sonar:sonar
 
 Spring Boot DevTools is included — the application auto-restarts on classpath changes during development.
 
-### Lavalink Plugins
-
-The following Lavalink plugins are pre-downloaded in `lavalink/plugins/`:
-
-| Plugin                                                                                  | Version  | Purpose                              |
-|-----------------------------------------------------------------------------------------|----------|--------------------------------------|
-| [youtube-plugin](https://github.com/lavalink-devs/youtube-source)                       | `1.18.0` | YouTube audio source (replaces native) |
-| [lavasrc-plugin](https://github.com/topi314/LavaSrc)                                   | `4.8.1`  | Spotify, Apple Music, Deezer, etc.   |
-| [lavasearch-plugin](https://github.com/topi314/LavaSearch)                              | `1.0.0`  | Enhanced search capabilities         |
-
-### Supported Audio Sources
-
-| Source       | Status                      |
-|--------------|-----------------------------|
-| YouTube      | ✅ via youtube-plugin        |
-| Spotify      | ✅ via LavaSrc plugin        |
-| SoundCloud   | ❌ Disabled (configurable)   |
-| Bandcamp     | ❌ Disabled (configurable)   |
-| Twitch       | ❌ Disabled (configurable)   |
-| Vimeo        | ❌ Disabled (configurable)   |
-| Nico         | ❌ Disabled (configurable)   |
-| HTTP streams | ✅ Native                    |
-| Apple Music  | ❌ Disabled (configurable)   |
-| Deezer       | ❌ Disabled (configurable)   |
-
 ---
 
 ### Key Design Decisions
@@ -155,6 +130,34 @@ The following Lavalink plugins are pre-downloaded in `lavalink/plugins/`:
 - **External Lavalink node** — audio processing is offloaded to a dedicated Lavalink v4 server communicating over WebSocket
 - **Log4j2** — configured via `spring-boot-starter-log4j2` (not SLF4J + Logback)
 - **Virtual threads** — enabled via `spring.threads.virtual.enabled: true` for efficient concurrency
+- **Separate management port** — actuator endpoints are served on port `54001` (configured via `management.server.port`)
+- **DAVE E2E audio encryption** — Discord's end-to-end encrypted voice protocol via `jdave-api`
+
+---
+
+## 🐳 Docker
+
+A multi-stage `Dockerfile` is included for building and running the bot in a container.
+
+### Build the image
+
+```bash
+docker build -t blackflash .
+```
+
+### Run the container
+
+```bash
+docker run -d \
+  -e DISCORD_TOKEN=your-discord-bot-token \
+  -e LAVALINK_NAME=blackflash \
+  -e LAVALINK_URI=lavalink:2333 \
+  -e LAVALINK_PASSWORD=youshallnotpass \
+  --network lavalink \
+  blackflash
+```
+
+The container exposes port `54001` for actuator health checks and uses ZGC with a 2 GB heap by default.
 
 ---
 
@@ -191,7 +194,7 @@ Tests cover all major components:
 
 ### Actuator Endpoints
 
-Available at `http://localhost:8080/actuator/`:
+Available at `http://localhost:54001/actuator/`:
 
 | Endpoint              | Description                  |
 |-----------------------|------------------------------|
@@ -204,34 +207,12 @@ Available at `http://localhost:8080/actuator/`:
 
 Kubernetes-compatible liveness and readiness probes are enabled:
 
-- `/actuator/health/liveness`
-- `/actuator/health/readiness`
+- `http://localhost:54001/actuator/health/liveness`
+- `http://localhost:54001/actuator/health/readiness`
 
 ### Metrics Export
 
 Metrics are exported to **Elasticsearch** when `ELASTIC_PASSWORD` is configured.
-
----
-
-## 🔧 Technology Stack
-
-| Component            | Technology                                  |
-|----------------------|---------------------------------------------|
-| Language             | Java 25                                     |
-| Framework            | Spring Boot 4.0.5                           |
-| Discord API          | JDA 6.4.1                                   |
-| Audio Streaming      | Lavalink Client 3.4.0 + Lavalink v4 Node   |
-| E2E Audio Encryption | jdave-api 0.1.8 (DAVE protocol)             |
-| Build Tool           | Maven 3.9.14+                               |
-| JSON Processing      | Jackson 3.x (`tools.jackson.*`)             |
-| Caching              | Caffeine                                    |
-| Resilience           | Resilience4j (Spring Cloud Circuit Breaker) |
-| Logging              | Log4j2                                      |
-| Code Quality         | JaCoCo, SonarQube                           |
-| Code Generation      | Lombok, MapStruct 1.6.3                     |
-| API Specification    | OpenAPI 3.1.1                               |
-| Tracing              | OpenTelemetry                               |
-| Containerization     | Docker Compose                              |
 
 ---
 

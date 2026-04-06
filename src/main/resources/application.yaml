@@ -37,7 +37,7 @@ management:
         user-name: elastic
         password: ${ELASTIC_PASSWORD:none}
   server:
-    port: 8080
+    port: 54001
   health:
     livenessstate.enabled: true
     readinessstate.enabled: true

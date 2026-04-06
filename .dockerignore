@@ -1,0 +1,36 @@
+# IDE & editor files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Build output (we rebuild inside the container)
+target/
+
+# Git metadata
+.git/
+.gitignore
+
+# Docker files (no need to send themselves into the build)
+Dockerfile
+docker-compose-dev.yml
+.dockerignore
+
+# Lavalink node config (runs in its own container)
+lavalink/
+
+# Documentation & CI files
+docs/
+*.md
+!README.md
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Environment / secrets
+.env
+*.env
+
