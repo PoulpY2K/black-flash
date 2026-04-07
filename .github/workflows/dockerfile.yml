@@ -52,8 +52,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSIONING_GIT_TAG=${{ env.TAG }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=registry,ref=ghcr.io/${{ env.IMAGE_NAME }}:build-cache
+          cache-to: type=registry,ref=ghcr.io/${{ env.IMAGE_NAME }}:build-cache,mode=max
 
       - name: Sign the published Docker image
         env:
