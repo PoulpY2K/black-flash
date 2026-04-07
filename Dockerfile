@@ -1,6 +1,10 @@
 # Blackflash — Discord Music Bot
 FROM maven:3.9.14-eclipse-temurin-25 AS build
 
+ARG VERSIONING_GIT_TAG
+
+RUN echo "Building Blackflash with versioning tag: ${VERSIONING_GIT_TAG}"
+
 WORKDIR /build
 
 COPY pom.xml .
@@ -9,7 +13,7 @@ RUN mvn dependency:go-offline -B
 COPY lombok.config .
 COPY src ./src
 
-RUN mvn clean package -Dgit.tag="$VERSIONING_GIT_TAG" -DskipTests -B
+RUN mvn clean package -Dgit.tag="${VERSIONING_GIT_TAG}" -DskipTests -B
 
 FROM eclipse-temurin:25-jre AS runtime
 
