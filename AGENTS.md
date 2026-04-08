@@ -47,8 +47,9 @@ mvn clean verify sonar:sonar
 
 - **Spring DevTools** enabled: auto-restart on classpath changes
 - **Virtual threads**: Enabled via `spring.threads.virtual.enabled: true`
-- **Docker Compose**: `docker-compose.yml` is present — runs a Lavalink v4 (alpine) node on `127.0.0.1:2333`; config is
-  mounted from `lavalink/application.yml`; start with `docker compose up -d` before running the bot locally
+- **Docker Compose**: `docker-compose-dev.yml` is present — runs a Lavalink v4 (alpine) node on `127.0.0.1:2333`; config is
+  mounted from `lavalink/application.yml`; start with `docker compose -f docker-compose-dev.yml up -d` before running
+  the bot locally; also accepts `SPOTIFY_ID`, `SPOTIFY_SECRET`, `SPOTIFY_DC` env vars for Spotify source support
 - **Banner**: Displays from `banner.txt` on startup (console mode)
 
 ## Architecture Patterns
@@ -102,7 +103,7 @@ JSON names map correctly.
 ### Configuration
 
 - **application.yaml** drives all configuration - no .properties files
-- **Actuator endpoints** exposed on port 8080: `/actuator/{health,info,metrics,caches}`
+- **Actuator endpoints** exposed on port **54001** (separate management port via `management.server.port: 54001`): `/actuator/{health,info,metrics,caches}`
 - **Health checks**: Liveness & readiness probes enabled (Kubernetes-compatible)
 - **Caching**: Using Caffeine for in-memory caches
 - **Security**: Spring Security enabled but custom `UserDetailsServiceAutoConfiguration` excluded
@@ -128,7 +129,8 @@ JSON names map correctly.
       `StringTrimmingDeserializer` directly
     - `SlashCommandListenerTests.java`: listener extends `ListenerAdapter`, `musicManagers` is initially empty, `init()`
       does not throw, `TrackStartEvent`/`TrackEndEvent` subscriptions are verified, event handlers forward to the
-      correct guild's `TrackScheduler` and do nothing when no manager is registered
+      correct guild's `TrackScheduler` and do nothing when no manager is registered; `/loop` command is covered with
+      all three cycle transitions (`DISABLED→TRACK`, `TRACK→QUEUE`, `QUEUE→DISABLED`)
     - `SlashCommandRegistryTests.java`: `getCommands()` returns all 8 commands by name; all commands are guild-scoped;
       `/play` has exactly one required `STRING` option named `query`; all other commands have empty options;
       `getCommands()` list is the same instance across calls
@@ -140,7 +142,9 @@ JSON names map correctly.
       queue and calls `setPaused(false)` (no throw when player is absent)
     - `TrackSchedulerTests.java`: `enqueue()` starts track immediately when player absent or no current track, queues
       when playing; `enqueuePlaylist()` queues all when playing, starts first and queues rest otherwise; `onTrackStart`/
-      `onTrackEnd` do not throw
+      `onTrackEnd` do not throw; `onTrackEnd` with `STOPPED` reason does not start next track; `DISABLED` mode starts
+      next queue track; `TRACK` mode restarts ended track; `QUEUE` mode re-queues ended track and starts next (loops
+      current track when queue is empty)
     - `UserDataTests.java`: stores requester ID; equal/hashCode for same ID; not equal for different IDs
 - **Test reports**: Maven Surefire generates reports in `target/surefire-reports/`
 
@@ -166,10 +170,11 @@ JSON names map correctly.
 | `src/main/java/.../lavalink/AudioLoader.java`                     | Per-query `AbstractAudioLoadResultHandler`; handles `ontrackLoaded`, `onPlaylistLoaded`, `onSearchResultLoaded`, `noMatches`, `loadFailed`; delegates to `TrackScheduler.enqueue()`                                                                                                                                       |
 | `src/main/java/.../lavalink/UserData.java`                        | Record `UserData(long requester)` — attached to each `Track` to store the requesting user's ID                                                                                                                                                                                                                            |
 | `src/main/java/.../lavalink/GuildMusicManager.java`               | Per-guild manager (not a Spring bean); two constructors: `(long, LavalinkClient)` for normal use and `(TrackScheduler, long, LavalinkClient)` for test injection; exposes `stop()` (clears queue, calls `setPaused(false).setTrack(null).subscribe()`), `getLink()`, `getPlayer()`, `getTrackScheduler()`, `getGuildId()` |
-| `src/main/java/.../lavalink/TrackScheduler.java`                  | Per-guild Lavalink event handler; queue management implemented: `enqueue()`, `enqueuePlaylist()`, `startTrack()`; `onTrackStart`/`onTrackEnd` log only (TODO: send Discord messages)                                                                                                                                      |
+| `src/main/java/.../lavalink/LoopMode.java`                        | Enum with three values: `DISABLED`, `TRACK`, `QUEUE`; `next()` cycles `DISABLED → TRACK → QUEUE → DISABLED`; used by `TrackScheduler` and `SlashCommandListener`                                                                                                                                                        |
+| `src/main/java/.../lavalink/TrackScheduler.java`                  | Per-guild Lavalink event handler; queue management implemented: `enqueue()`, `enqueuePlaylist()`, `startTrack()`; `loopMode` field (`LoopMode.DISABLED` by default, `@Getter @Setter`); `onTrackEnd` handles loop modes — `TRACK` replays ended track, `QUEUE` re-queues it and starts next, `DISABLED` starts next queue track; guarded by `endReason.getMayStartNext()`; `onTrackStart` logs only (TODO: send Discord messages) |
 | `src/main/resources/application.yaml`                             | Runtime config: actuator endpoints, caching, metrics export, health probes                                                                                                                                                                                                                                                |
 | `src/main/resources/api-spec/blackflash-api.yaml`                 | OpenAPI 3.1.1 specification (currently minimal)                                                                                                                                                                                                                                                                           |
-| `docker-compose.yml`                                              | Starts a Lavalink v4 (alpine) container on `127.0.0.1:2333` for local development                                                                                                                                                                                                                                         |
+| `docker-compose-dev.yml`                                          | Starts a Lavalink v4 (alpine) container on `127.0.0.1:2333` for local development                                                                                                                                                                                                                                         |
 | `lavalink/application.yml`                                        | Lavalink server config: password, enabled sources, filters, buffer settings                                                                                                                                                                                                                                               |
 | `lavalink/plugins/`                                               | Pre-downloaded Lavalink plugin JARs: `youtube-plugin-1.18.0.jar`, `lavasrc-plugin-4.8.1.jar`, `lavasearch-plugin-1.0.0.jar`                                                                                                                                                                                               |
 | `lombok.config`                                                   | Lombok global settings: generated annotations, custom Builder class naming                                                                                                                                                                                                                                                |
@@ -204,7 +209,7 @@ JSON names map correctly.
 - **Registered commands** (defined in `SlashCommandRegistry`): `/help`, `/join`, `/play` (required `query` option),
   `/skip`, `/loop`, `/shuffle`, `/leave`, `/stop` — all scoped to `InteractionContextType.GUILD`
 - **Implemented handlers** (in `SlashCommandListener.onSlashCommandInteraction()`): `/join`, `/play`, `/stop`,
-  `/leave`; `/skip`, `/loop`, `/shuffle`, `/help` log a warning and reply "Unknown command!" until implemented
+  `/leave`, `/loop`; `/skip`, `/shuffle`, `/help` log a warning and reply "Unknown command!" until implemented
 
 ### Audio Playback — Lavalink Client v3.4.0
 
@@ -224,9 +229,10 @@ JSON names map correctly.
 - **`TrackScheduler`** (`lavalink/` package): per-guild lifecycle handler; `queue` field is `public
   Queue<Track>` (directly accessed in tests); queue management **implemented**: `enqueue()` starts immediately if no
   track is playing, otherwise queues; `enqueuePlaylist()` adds all tracks then starts the first; `startTrack()` calls
-  `link.createOrUpdatePlayer()` with volume 50 and `setEndTime(track.getInfo().getLength())`; `onTrackStart`/
-  `onTrackEnd`
-  log only (TODO: send Discord messages)
+  `link.createOrUpdatePlayer()` with volume 50 and `setEndTime(track.getInfo().getLength())`; `loopMode` field
+  (`LoopMode.DISABLED` by default, `@Getter @Setter`); `onTrackEnd` handles loop modes — `TRACK` replays ended track,
+  `QUEUE` re-queues it and starts next, `DISABLED` starts next queue track; guarded by `endReason.getMayStartNext()`;
+  `onTrackStart` logs only (TODO: send Discord messages)
 - **`AudioLoader`** (`lavalink/` package): per-query `AbstractAudioLoadResultHandler`; handles
   `ontrackLoaded` (attaches `UserData`, calls `enqueue()`, sends `"Added to queue: {title}\nRequested by: <@{id}>"` via
   hook), `onPlaylistLoaded` (calls `enqueuePlaylist()`),
@@ -283,6 +289,6 @@ JSON names map correctly.
    JDA init errors are logged in `DiscordConfiguration`
 8. **Lavalink node credentials** - `LavalinkConfiguration` reads `lavalink.name`, `lavalink.uri`, `lavalink.password`
    from application properties; supply these via environment variables (`LAVALINK_NAME`, `LAVALINK_URI`,
-   `LAVALINK_PASSWORD`) or add them to `application.yaml`; for local dev the defaults match `docker-compose.yml` (
+   `LAVALINK_PASSWORD`) or add them to `application.yaml`; for local dev the defaults match `docker-compose-dev.yml` (
    password `youshallnotpass`, uri `127.0.0.1:2333`)
 

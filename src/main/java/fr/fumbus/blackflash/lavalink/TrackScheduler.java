@@ -6,11 +6,12 @@ import dev.arbjerg.lavalink.client.player.Track;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.Synchronized;
 import lombok.extern.log4j.Log4j2;
 
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import static java.util.Objects.nonNull;
 
@@ -25,13 +26,19 @@ import static java.util.Objects.nonNull;
 @RequiredArgsConstructor
 public class TrackScheduler {
 
-    public final Queue<Track> queue = new LinkedList<>();
+    public final Queue<Track> queue = new ConcurrentLinkedDeque<>();
     private final GuildMusicManager guildMusicManager;
 
     @Getter
     @Setter
-    private LoopMode loopMode = LoopMode.DISABLED;
+    private volatile LoopMode loopMode = LoopMode.DISABLED;
 
+    @Synchronized
+    public void clearQueue() {
+        queue.clear();
+    }
+
+    @Synchronized
     public void enqueue(Track track) {
         guildMusicManager.getPlayer().ifPresentOrElse(
                 player -> {
@@ -45,6 +52,7 @@ public class TrackScheduler {
         );
     }
 
+    @Synchronized
     public void enqueuePlaylist(List<Track> tracks) {
         queue.addAll(tracks);
 
@@ -58,11 +66,13 @@ public class TrackScheduler {
         );
     }
 
+    @Synchronized
     public void onTrackStart(TrackStartEvent event) {
         // TODO: your homework: Send a message to the channel somehow, have fun!
         log.info("[Guild {}] Track started: {}", guildMusicManager.getGuildId(), event.getTrack().getInfo().getTitle());
     }
 
+    @Synchronized
     public void onTrackEnd(TrackEndEvent event) {
         log.info("[Guild {}] Track ended: {} (reason: {})", guildMusicManager.getGuildId(), event.getTrack().getInfo().getTitle(), event.getEndReason());
 
@@ -80,7 +90,7 @@ public class TrackScheduler {
                 queue.offer(endedTrack);
                 startNextQueueTrack();
             }
-            default -> startNextQueueTrack();
+            case DISABLED -> startNextQueueTrack();
         }
     }
 
