@@ -33,12 +33,18 @@ public class AudioLoader extends AbstractAudioLoadResultHandler {
 
     @Override
     public void onPlaylistLoaded(@NotNull PlaylistLoaded result) {
-        final int trackCount = result.getTracks().size();
+        final List<Track> tracks = result.getTracks();
+
+        if (tracks.isEmpty()) {
+            event.getHook().sendMessage("The playlist is empty!").queue();
+            return;
+        }
+
         event.getHook()
-                .sendMessage("Added " + trackCount + " tracks to the queue from " + result.getInfo().getName() + "!")
+                .sendMessage("Added " + tracks.size() + " tracks to the queue from " + result.getInfo().getName() + "!")
                 .queue();
 
-        guildMusicManager.getTrackScheduler().enqueuePlaylist(result.getTracks());
+        guildMusicManager.getTrackScheduler().enqueuePlaylist(tracks);
     }
 
     @Override

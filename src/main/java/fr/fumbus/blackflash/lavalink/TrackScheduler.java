@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 /**
@@ -42,7 +43,7 @@ public class TrackScheduler {
     public void enqueue(Track track) {
         guildMusicManager.getPlayer().ifPresentOrElse(
                 player -> {
-                    if (player.getTrack() == null) {
+                    if (isNull(player.getTrack())) {
                         startTrack(track);
                     } else {
                         queue.offer(track);
@@ -58,11 +59,11 @@ public class TrackScheduler {
 
         guildMusicManager.getPlayer().ifPresentOrElse(
                 player -> {
-                    if (player.getTrack() == null) {
-                        startTrack(queue.poll());
+                    if (isNull(player.getTrack())) {
+                        startNextQueueTrack();
                     }
                 },
-                () -> startTrack(queue.poll())
+                this::startNextQueueTrack
         );
     }
 

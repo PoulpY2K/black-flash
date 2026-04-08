@@ -57,6 +57,17 @@ class AudioLoaderTests {
     }
 
     @Test
+    void onPlaylistLoaded_whenEmptyPlaylist_sendsMessageAndDoesNotEnqueue() {
+        PlaylistLoaded result = mock(PlaylistLoaded.class, Answers.RETURNS_DEEP_STUBS);
+        when(result.getTracks()).thenReturn(List.of());
+
+        audioLoader.onPlaylistLoaded(result);
+
+        verify(event.getHook()).sendMessage("The playlist is empty!");
+        verify(guildMusicManager.getTrackScheduler(), never()).enqueuePlaylist(any());
+    }
+
+    @Test
     void onSearchResultLoaded_whenResultsExist_enqueuesFirstTrackAndSendsMessage() {
         SearchResult result = mock(SearchResult.class, Answers.RETURNS_DEEP_STUBS);
         Track firstTrack = mock(Track.class, Answers.RETURNS_DEEP_STUBS);
