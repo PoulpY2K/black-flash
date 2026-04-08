@@ -32,7 +32,7 @@ public class GuildMusicManager {
     }
 
     public void stop() {
-        trackScheduler.queue.clear();
+        trackScheduler.clearQueue();
 
         getPlayer().ifPresent(
                 player -> player.setPaused(false)

@@ -1,9 +1,6 @@
 package fr.fumbus.blackflash.lavalink;
 
 import dev.arbjerg.lavalink.client.player.*;
-import fr.fumbus.blackflash.lavalink.AudioLoader;
-import fr.fumbus.blackflash.lavalink.GuildMusicManager;
-import fr.fumbus.blackflash.lavalink.UserData;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +54,17 @@ class AudioLoaderTests {
 
         verify(guildMusicManager.getTrackScheduler()).enqueuePlaylist(tracks);
         verify(event.getHook()).sendMessage("Added 2 tracks to the queue from My Playlist!");
+    }
+
+    @Test
+    void onPlaylistLoaded_whenEmptyPlaylist_sendsMessageAndDoesNotEnqueue() {
+        PlaylistLoaded result = mock(PlaylistLoaded.class, Answers.RETURNS_DEEP_STUBS);
+        when(result.getTracks()).thenReturn(List.of());
+
+        audioLoader.onPlaylistLoaded(result);
+
+        verify(event.getHook()).sendMessage("The playlist is empty!");
+        verify(guildMusicManager.getTrackScheduler(), never()).enqueuePlaylist(any());
     }
 
     @Test
