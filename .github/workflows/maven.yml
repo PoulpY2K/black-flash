@@ -34,11 +34,15 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Build, test and generate reports with Maven
+      - name: Build and test with Maven
+        run: mvn clean verify --no-transfer-progress -B
+
+      - name: Analyze with SonarQube
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B --no-transfer-progress verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true
+        run: mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true --no-transfer-progress -B
 
       - name: Upload JAR artifact
         if: github.event_name != 'pull_request'
