@@ -8,7 +8,6 @@ import fr.fumbus.blackflash.lavalink.AudioLoader;
 import fr.fumbus.blackflash.lavalink.GuildMusicManager;
 import fr.fumbus.blackflash.lavalink.LoopMode;
 import jakarta.annotation.PostConstruct;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Synchronized;
@@ -20,6 +19,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -65,7 +65,7 @@ public class SlashCommandListener extends ListenerAdapter {
     }
 
     @Override
-    public void onReady(@NotNull ReadyEvent event) {
+    public void onReady(@NonNull ReadyEvent event) {
         log.info("{} is ready!", event.getJDA().getSelfUser().getAsTag());
 
         event.getJDA().updateCommands()
@@ -74,26 +74,36 @@ public class SlashCommandListener extends ListenerAdapter {
     }
 
     @Override
-    public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
-        Guild guild = Optional
-                .ofNullable(event.getGuild())
-                .orElseThrow(
-                        () -> {
-                            log.error("Received a slash command interaction without a guild context!");
-                            return new IllegalStateException("Received a slash command interaction without a guild context!");
-                        }
-                );
-        String commandName = event.getFullCommandName();
+    public void onSlashCommandInteraction(@NonNull SlashCommandInteractionEvent event) {
+        Member member = getMember(event);
+        if (checkIfMemberNotInVoiceChannel(member)) {
+            event.reply(MESSAGE_MEMBER_NOT_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+            return;
+        }
 
+        Guild guild = getGuild(event);
+        String commandName = event.getFullCommandName();
         switch (commandName) {
             case COMMAND_JOIN:
+                if (isBotInVoiceChannel(guild)) {
+                    event.reply(MESSAGE_BOT_ALREADY_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+                    return;
+                }
                 joinChannel(event);
                 break;
             case COMMAND_STOP:
+                if (!isBotInVoiceChannel(guild)) {
+                    event.reply(MESSAGE_BOT_NOT_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+                    return;
+                }
                 getOrCreateMusicManager(guild.getIdLong()).stop();
                 event.reply("Stopped the current track!").queue();
                 break;
             case COMMAND_LEAVE:
+                if (!isBotInVoiceChannel(guild)) {
+                    event.reply(MESSAGE_BOT_NOT_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+                    return;
+                }
                 event.getJDA().getDirectAudioController().disconnect(guild);
                 musicManagers.remove(guild.getIdLong());
                 event.reply("Leaving the channel!").queue();
@@ -102,6 +112,10 @@ public class SlashCommandListener extends ListenerAdapter {
                 playSong(event, guild);
                 break;
             case COMMAND_LOOP:
+                if (!isBotInVoiceChannel(guild)) {
+                    event.reply(MESSAGE_BOT_NOT_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+                    return;
+                }
                 handleLoop(event, guild);
                 break;
             default:
@@ -125,9 +139,7 @@ public class SlashCommandListener extends ListenerAdapter {
     }
 
     private void playSong(SlashCommandInteractionEvent event, Guild guild) {
-        if (Optional.ofNullable(guild.getSelfMember().getVoiceState())
-                .map(GuildVoiceState::inAudioChannel)
-                .orElse(false)) {
+        if (isBotInVoiceChannel(guild)) {
             event.deferReply(false).queue();
         } else {
             joinChannel(event);
@@ -157,5 +169,37 @@ public class SlashCommandListener extends ListenerAdapter {
     @Synchronized
     private GuildMusicManager getOrCreateMusicManager(long guildId) {
         return musicManagers.computeIfAbsent(guildId, id -> new GuildMusicManager(id, lavalink));
+    }
+
+    private static @NonNull Boolean isBotInVoiceChannel(Guild guild) {
+        return Optional.ofNullable(guild.getSelfMember().getVoiceState())
+                .map(GuildVoiceState::inAudioChannel)
+                .orElse(false);
+    }
+
+    private static @NonNull Member getMember(SlashCommandInteractionEvent event) {
+        return Optional
+                .ofNullable(event.getMember())
+                .orElseThrow(
+                        () -> {
+                            log.error("Received a slash command interaction without a member context!");
+                            return new IllegalStateException("Received a slash command interaction without a member context!");
+                        }
+                );
+    }
+
+    private static boolean checkIfMemberNotInVoiceChannel(Member member) {
+        return nonNull(member.getVoiceState()) && !member.getVoiceState().inAudioChannel();
+    }
+
+    private static @NonNull Guild getGuild(SlashCommandInteractionEvent event) {
+        return Optional
+                .ofNullable(event.getGuild())
+                .orElseThrow(
+                        () -> {
+                            log.error("Received a slash command interaction without a guild context!");
+                            return new IllegalStateException("Received a slash command interaction without a guild context!");
+                        }
+                );
     }
 }
