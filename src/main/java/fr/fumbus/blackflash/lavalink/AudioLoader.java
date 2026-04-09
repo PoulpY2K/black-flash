@@ -2,10 +2,10 @@ package fr.fumbus.blackflash.lavalink;
 
 import dev.arbjerg.lavalink.client.AbstractAudioLoadResultHandler;
 import dev.arbjerg.lavalink.client.player.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ public class AudioLoader extends AbstractAudioLoadResultHandler {
     private final GuildMusicManager guildMusicManager;
 
     @Override
-    public void ontrackLoaded(@NotNull TrackLoaded result) {
+    public void ontrackLoaded(@NonNull TrackLoaded result) {
         final Track track = result.getTrack();
         UserData userData = new UserData(event.getUser().getIdLong());
         track.setUserData(userData);
@@ -32,7 +32,7 @@ public class AudioLoader extends AbstractAudioLoadResultHandler {
     }
 
     @Override
-    public void onPlaylistLoaded(@NotNull PlaylistLoaded result) {
+    public void onPlaylistLoaded(@NonNull PlaylistLoaded result) {
         final List<Track> tracks = result.getTracks();
 
         if (tracks.isEmpty()) {
@@ -48,7 +48,7 @@ public class AudioLoader extends AbstractAudioLoadResultHandler {
     }
 
     @Override
-    public void onSearchResultLoaded(@NotNull SearchResult result) {
+    public void onSearchResultLoaded(@NonNull SearchResult result) {
         final List<Track> tracks = result.getTracks();
 
         if (tracks.isEmpty()) {
@@ -69,7 +69,7 @@ public class AudioLoader extends AbstractAudioLoadResultHandler {
     }
 
     @Override
-    public void loadFailed(@NotNull LoadFailed result) {
+    public void loadFailed(@NonNull LoadFailed result) {
         event.getHook().sendMessage("Failed to load track! " + result.getException().getMessage()).queue();
     }
 }
