@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static fr.fumbus.blackflash.discord.slash.SlashCommandConstants.*;
+import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 
 /**
@@ -75,13 +76,13 @@ public class SlashCommandListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(@NonNull SlashCommandInteractionEvent event) {
+        Guild guild = getGuild(event);
         Member member = getMember(event);
         if (checkIfMemberNotInVoiceChannel(member)) {
             event.reply(MESSAGE_MEMBER_NOT_IN_VOICE_CHANNEL).setEphemeral(true).queue();
             return;
         }
 
-        Guild guild = getGuild(event);
         String commandName = event.getFullCommandName();
         switch (commandName) {
             case COMMAND_JOIN:
@@ -171,7 +172,7 @@ public class SlashCommandListener extends ListenerAdapter {
         return musicManagers.computeIfAbsent(guildId, id -> new GuildMusicManager(id, lavalink));
     }
 
-    private static @NonNull Boolean isBotInVoiceChannel(Guild guild) {
+    private static boolean isBotInVoiceChannel(Guild guild) {
         return Optional.ofNullable(guild.getSelfMember().getVoiceState())
                 .map(GuildVoiceState::inAudioChannel)
                 .orElse(false);
@@ -189,7 +190,7 @@ public class SlashCommandListener extends ListenerAdapter {
     }
 
     private static boolean checkIfMemberNotInVoiceChannel(Member member) {
-        return nonNull(member.getVoiceState()) && !member.getVoiceState().inAudioChannel();
+        return isNull(member.getVoiceState()) || !member.getVoiceState().inAudioChannel();
     }
 
     private static @NonNull Guild getGuild(SlashCommandInteractionEvent event) {

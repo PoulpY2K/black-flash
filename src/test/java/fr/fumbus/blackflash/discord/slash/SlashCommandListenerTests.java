@@ -112,9 +112,11 @@ class SlashCommandListenerTests {
     // ─── onSlashCommandInteraction ────────────────────────────────────────────
 
     @Test
-    void onSlashCommandInteraction_throwsWhenCalledOutsideGuildContext() {
+    void onSlashCommandInteraction_throwsWhenGuildContextIsNull() {
+        // In real JDA, slash commands sent from a DM have getGuild() == null.
+        // getGuild() is the first guard in onSlashCommandInteraction, so it must throw
+        // IllegalStateException before any member or voice checks are reached.
         SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class, Answers.RETURNS_DEEP_STUBS);
-        when(event.getMember().getVoiceState().inAudioChannel()).thenReturn(true);
         when(event.getGuild()).thenReturn(null);
 
         assertThrows(IllegalStateException.class, () -> listener.onSlashCommandInteraction(event));
@@ -122,9 +124,12 @@ class SlashCommandListenerTests {
 
     @Test
     void onSlashCommandInteraction_repliesEphemeralWhenMemberNotInVoiceChannel() {
-        // With RETURNS_DEEP_STUBS: member.getVoiceState() is non-null AND inAudioChannel() defaults to false
-        // → checkIfMemberNotInVoiceChannel returns true → early return before any command is processed
+        // In real JDA, getMember().getVoiceState() returns null when the VOICE_STATE cache
+        // flag is off or when no voice state is cached for that member.
+        // checkIfMemberNotInVoiceChannel must treat null voice state as "not in channel"
+        // so the ephemeral guard triggers and no connect() call is ever attempted.
         SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class, Answers.RETURNS_DEEP_STUBS);
+        when(event.getMember().getVoiceState()).thenReturn(null);
 
         listener.onSlashCommandInteraction(event);
 
