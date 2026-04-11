@@ -1,4 +1,4 @@
-name: Java CI Build with Maven and SonarQube
+name: Maven Build and Analyze
 
 on:
   workflow_dispatch:
