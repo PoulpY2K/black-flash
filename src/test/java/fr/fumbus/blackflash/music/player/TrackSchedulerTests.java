@@ -255,17 +255,16 @@ class TrackSchedulerTests {
         trackScheduler.shuffle();
 
         assertThat(trackScheduler.queue).isEmpty();
-        verify(guildMusicManager, never()).getPlayer();
     }
 
     @Test
     void shuffle_doesNothingWhenQueueHasOnlyOneTrack() {
-        trackScheduler.queue.offer(mock(Track.class));
+        Track single = mock(Track.class);
+        trackScheduler.queue.offer(single);
 
         trackScheduler.shuffle();
 
-        assertThat(trackScheduler.queue).hasSize(1);
-        verify(guildMusicManager, never()).getPlayer();
+        assertThat(trackScheduler.queue).containsExactly(single);
     }
 
     @Test

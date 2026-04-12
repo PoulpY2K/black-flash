@@ -15,9 +15,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Optional;
-
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_SHUFFLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -40,10 +37,13 @@ class SlashShuffleCommandHandlerTests {
     }
 
     @Test
-    void handle_repliesEphemeralWhenQueueHasOneOrZeroTracks() {
+    void handle_repliesEphemeralWhenQueueHasOneOrLessTracks() {
         long guildId = 42L;
-        GuildMusicManager manager = mock(GuildMusicManager.class, Answers.RETURNS_DEEP_STUBS);
-        TrackScheduler scheduler = new TrackScheduler(manager);
+        // Use a spy on a real TrackScheduler so the public `queue` field is properly initialised
+        GuildMusicManager musicManager = mock(GuildMusicManager.class);
+        TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
+        // queue is empty by default → size 0 <= 1 → guard fires
+        GuildMusicManager manager = mock(GuildMusicManager.class);
         when(manager.getTrackScheduler()).thenReturn(scheduler);
         when(registry.getOrCreate(guildId)).thenReturn(manager);
 
@@ -55,16 +55,20 @@ class SlashShuffleCommandHandlerTests {
 
         verify(event).reply("There needs to be at least 2 tracks in the queue to shuffle!");
         verify(event.reply("There needs to be at least 2 tracks in the queue to shuffle!")).setEphemeral(true);
+        verify(scheduler, never()).shuffle();
     }
 
     @Test
-    void handle_shufflesQueueAndReplies() {
+    void handle_shufflesAndRepliesWhenQueueHasMoreThanOneTrack() {
         long guildId = 42L;
-        GuildMusicManager manager = mock(GuildMusicManager.class, Answers.RETURNS_DEEP_STUBS);
-        TrackScheduler scheduler = new TrackScheduler(manager);
-        scheduler.queue.addAll(List.of(mock(Track.class), mock(Track.class)));
+        // Use a spy so the public `queue` field is initialised and we can verify shuffle()
+        GuildMusicManager musicManager = mock(GuildMusicManager.class);
+        TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
+        doNothing().when(scheduler).shuffle();
+        scheduler.queue.offer(mock(Track.class));
+        scheduler.queue.offer(mock(Track.class));
+        GuildMusicManager manager = mock(GuildMusicManager.class);
         when(manager.getTrackScheduler()).thenReturn(scheduler);
-        when(manager.getPlayer()).thenReturn(Optional.empty());
         when(registry.getOrCreate(guildId)).thenReturn(manager);
 
         SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class, Answers.RETURNS_DEEP_STUBS);
@@ -73,7 +77,7 @@ class SlashShuffleCommandHandlerTests {
 
         handler.handle(event, guild);
 
-        assertThat(scheduler.queue).hasSize(2);
+        verify(scheduler).shuffle();
         verify(event).reply("🔀 Queue shuffled!");
     }
 }

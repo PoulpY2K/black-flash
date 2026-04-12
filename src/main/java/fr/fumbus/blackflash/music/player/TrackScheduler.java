@@ -79,10 +79,6 @@ public class TrackScheduler {
      */
     @Synchronized
     public void shuffle() {
-        if (queueHasOnlyOneTrack()) {
-            return;
-        }
-
         List<Track> tracks = new ArrayList<>(queue);
         Collections.shuffle(tracks);
         avoidFirstMatchingCurrentTrack(tracks);
@@ -90,7 +86,6 @@ public class TrackScheduler {
         queue.addAll(tracks);
     }
 
-    // Package-private: extracted for deterministic testing (Collections.class cannot be mocked with Mockito)
     void avoidFirstMatchingCurrentTrack(List<Track> tracks) {
         guildMusicManager.getPlayer()
                 .map(LavalinkPlayer::getTrack)
@@ -162,10 +157,6 @@ public class TrackScheduler {
             }
             case DISABLED -> startNextQueueTrack();
         }
-    }
-
-    private boolean queueHasOnlyOneTrack() {
-        return queue.size() <= 1;
     }
 
     private static boolean isFirstTrackSameAsPlayed(Track currentTrack, List<Track> tracks) {

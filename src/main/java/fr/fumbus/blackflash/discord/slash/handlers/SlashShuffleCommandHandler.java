@@ -37,7 +37,7 @@ public class SlashShuffleCommandHandler implements SlashCommandHandler {
     public void handle(SlashCommandInteractionEvent event, Guild guild) {
         var scheduler = registry.getOrCreate(guild.getIdLong()).getTrackScheduler();
 
-        if (queueHasOnlyOneTrack(scheduler)) {
+        if (queueHasOneOrLessTrack(scheduler)) {
             event.reply("There needs to be at least 2 tracks in the queue to shuffle!").setEphemeral(true).queue();
             return;
         }
@@ -46,7 +46,7 @@ public class SlashShuffleCommandHandler implements SlashCommandHandler {
         event.reply("🔀 Queue shuffled!").queue();
     }
 
-    private static boolean queueHasOnlyOneTrack(TrackScheduler scheduler) {
+    private static boolean queueHasOneOrLessTrack(TrackScheduler scheduler) {
         return scheduler.queue.size() <= 1;
     }
 }
