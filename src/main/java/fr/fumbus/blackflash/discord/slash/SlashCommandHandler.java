@@ -18,8 +18,6 @@ public interface SlashCommandHandler {
 
     /**
      * The Discord command definition: name, description, options, and context.
-     * This is used both to register the command with Discord on startup and to
-     * build the dispatch map in {@link SlashCommandListener}.
      */
     CommandData commandData();
 

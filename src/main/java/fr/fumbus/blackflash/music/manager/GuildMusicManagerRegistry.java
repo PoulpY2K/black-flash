@@ -1,11 +1,11 @@
 package fr.fumbus.blackflash.music.manager;
 
 import dev.arbjerg.lavalink.client.LavalinkClient;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -22,11 +22,14 @@ public class GuildMusicManagerRegistry {
 
     private final LavalinkClient lavalink;
 
-    @Getter
     private final Map<Long, GuildMusicManager> managers = new ConcurrentHashMap<>();
 
     public GuildMusicManager getOrCreate(long guildId) {
         return managers.computeIfAbsent(guildId, id -> new GuildMusicManager(id, lavalink));
+    }
+
+    public Optional<GuildMusicManager> getIfPresent(long guildId) {
+        return Optional.ofNullable(managers.get(guildId));
     }
 
     public void remove(long guildId) {

@@ -25,12 +25,14 @@ import static java.util.Objects.nonNull;
 @RequiredArgsConstructor
 public class SlashJoinCommandHandler implements SlashCommandHandler {
 
+    private static final CommandData COMMAND_DATA = Commands.slash(COMMAND_JOIN, DESCRIPTION_JOIN)
+            .setContexts(InteractionContextType.GUILD);
+
     private final GuildMusicManagerRegistry registry;
 
     @Override
     public CommandData commandData() {
-        return Commands.slash(COMMAND_JOIN, DESCRIPTION_JOIN)
-                .setContexts(InteractionContextType.GUILD);
+        return COMMAND_DATA;
     }
 
     /**

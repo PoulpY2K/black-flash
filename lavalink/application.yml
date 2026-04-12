@@ -104,7 +104,7 @@ lavalink:
     soundcloudSearchEnabled: false
     soundcloudFilterOutPreviewTracks: false
     gc-warnings: true
-      #ratelimit:
+    #ratelimit:
     #ipBlocks: ["1.0.0.0/8", "..."] # list of ip blocks
     #excludedIps: ["...", "..."] # ips which should be explicit excluded from usage by lavalink
     #strategy: "RotateOnBan" # RotateOnBan | LoadBalance | NanoSwitch | RotatingNanoSwitch

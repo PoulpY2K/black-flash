@@ -26,7 +26,7 @@ class GuildMusicManagerRegistryTests {
             GuildMusicManager manager = registry.getOrCreate(42L);
 
             assertThat(ctor.constructed()).hasSize(1);
-            assertThat(registry.getManagers()).containsKey(42L);
+            assertThat(registry.getIfPresent(42L)).isPresent();
             assertThat(manager).isNotNull();
         }
     }
@@ -48,7 +48,7 @@ class GuildMusicManagerRegistryTests {
             registry.getOrCreate(42L);
             registry.remove(42L);
 
-            assertThat(registry.getManagers()).doesNotContainKey(42L);
+            assertThat(registry.getIfPresent(42L)).isEmpty();
         }
     }
 }

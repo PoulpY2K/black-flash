@@ -22,12 +22,14 @@ import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.DES
 @RequiredArgsConstructor
 public class SlashSkipCommandHandler implements SlashCommandHandler {
 
+    private static final CommandData COMMAND_DATA = Commands.slash(COMMAND_SKIP, DESCRIPTION_SKIP)
+            .setContexts(InteractionContextType.GUILD);
+
     private final GuildMusicManagerRegistry registry;
 
     @Override
     public CommandData commandData() {
-        return Commands.slash(COMMAND_SKIP, DESCRIPTION_SKIP)
-                .setContexts(InteractionContextType.GUILD);
+        return COMMAND_DATA;
     }
 
     @Override

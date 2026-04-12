@@ -20,8 +20,7 @@ import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.MESSAGE_BOT_NOT_IN_VOICE_CHANNEL;
@@ -30,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @SuppressWarnings("DataFlowIssue")
@@ -91,8 +91,7 @@ class SlashCommandListenerTests {
 
     @Test
     void init_trackStartEventHandler_delegatesToManagerOrDoesNothingWhenAbsent() {
-        Map<Long, GuildMusicManager> managers = new ConcurrentHashMap<>();
-        when(musicManagerRegistry.getManagers()).thenReturn(managers);
+        when(musicManagerRegistry.getIfPresent(anyLong())).thenReturn(Optional.empty());
         listener = listenerWithNoHandlers();
         listener.init();
 
@@ -107,7 +106,8 @@ class SlashCommandListenerTests {
         TrackStartEvent event = mock(TrackStartEvent.class, Answers.RETURNS_DEEP_STUBS);
         when(event.getGuildId()).thenReturn(guildId);
         try (MockedConstruction<TrackScheduler> ctor = mockConstruction(TrackScheduler.class)) {
-            managers.put(guildId, new GuildMusicManager(guildId, lavalinkClient));
+            GuildMusicManager manager = new GuildMusicManager(guildId, lavalinkClient);
+            when(musicManagerRegistry.getIfPresent(guildId)).thenReturn(Optional.of(manager));
             captor.getValue().accept(event);
             verify(ctor.constructed().getFirst()).onTrackStart(event);
         }
@@ -117,8 +117,7 @@ class SlashCommandListenerTests {
 
     @Test
     void init_trackEndEventHandler_delegatesToManagerOrDoesNothingWhenAbsent() {
-        Map<Long, GuildMusicManager> managers = new ConcurrentHashMap<>();
-        when(musicManagerRegistry.getManagers()).thenReturn(managers);
+        when(musicManagerRegistry.getIfPresent(anyLong())).thenReturn(Optional.empty());
         listener = listenerWithNoHandlers();
         listener.init();
 
@@ -133,7 +132,8 @@ class SlashCommandListenerTests {
         TrackEndEvent event = mock(TrackEndEvent.class, Answers.RETURNS_DEEP_STUBS);
         when(event.getGuildId()).thenReturn(guildId);
         try (MockedConstruction<TrackScheduler> ctor = mockConstruction(TrackScheduler.class)) {
-            managers.put(guildId, new GuildMusicManager(guildId, lavalinkClient));
+            GuildMusicManager manager = new GuildMusicManager(guildId, lavalinkClient);
+            when(musicManagerRegistry.getIfPresent(guildId)).thenReturn(Optional.of(manager));
             captor.getValue().accept(event);
             verify(ctor.constructed().getFirst()).onTrackEnd(event);
         }
@@ -142,9 +142,11 @@ class SlashCommandListenerTests {
     @Test
     void onReady_registersCommandDataFromHandlers() {
         CommandData commandData = mock(CommandData.class);
+        when(commandData.getName()).thenReturn("testcmd");
         SlashCommandHandler handler = mock(SlashCommandHandler.class);
         when(handler.commandData()).thenReturn(commandData);
         listener = listenerWithHandlers(handler);
+        listener.init();
         ReadyEvent readyEvent = mock(ReadyEvent.class, Answers.RETURNS_DEEP_STUBS);
 
         listener.onReady(readyEvent);
@@ -228,6 +230,21 @@ class SlashCommandListenerTests {
 
         verify(handler).handle(any(), any(Guild.class));
         verify(event, never()).reply(MESSAGE_BOT_NOT_IN_VOICE_CHANNEL);
+    }
+
+    @Test
+    void constructor_throwsWhenDuplicateCommandNamesExist() {
+        CommandData cd1 = mock(CommandData.class);
+        when(cd1.getName()).thenReturn("duplicate");
+        SlashCommandHandler h1 = mock(SlashCommandHandler.class);
+        when(h1.commandData()).thenReturn(cd1);
+
+        CommandData cd2 = mock(CommandData.class);
+        when(cd2.getName()).thenReturn("duplicate");
+        SlashCommandHandler h2 = mock(SlashCommandHandler.class);
+        when(h2.commandData()).thenReturn(cd2);
+
+        assertThrows(IllegalStateException.class, () -> listenerWithHandlers(h1, h2));
     }
 
     private SlashCommandListener listenerWithNoHandlers() {

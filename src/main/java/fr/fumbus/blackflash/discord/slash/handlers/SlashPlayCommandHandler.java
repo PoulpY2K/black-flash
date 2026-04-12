@@ -29,15 +29,17 @@ import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.DES
 @RequiredArgsConstructor
 public class SlashPlayCommandHandler implements SlashCommandHandler {
 
+    private static final CommandData COMMAND_DATA = Commands.slash(COMMAND_PLAY, DESCRIPTION_PLAY)
+            .setContexts(InteractionContextType.GUILD)
+            .addOption(OptionType.STRING, "query", "URL or search query", true);
+
     private final LavalinkClient lavalink;
     private final GuildMusicManagerRegistry registry;
     private final SlashJoinCommandHandler slashJoinCommandHandler;
 
     @Override
     public CommandData commandData() {
-        return Commands.slash(COMMAND_PLAY, DESCRIPTION_PLAY)
-                .setContexts(InteractionContextType.GUILD)
-                .addOption(OptionType.STRING, "query", "URL or search query", true);
+        return COMMAND_DATA;
     }
 
     /**
