@@ -1,6 +1,9 @@
 package fr.fumbus.blackflash.discord.slash.handlers;
 
+import dev.arbjerg.lavalink.client.player.Track;
+import fr.fumbus.blackflash.music.manager.GuildMusicManager;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
+import fr.fumbus.blackflash.music.player.TrackScheduler;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
@@ -14,8 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_SHUFFLE;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SlashShuffleCommandHandlerTests {
@@ -35,14 +37,47 @@ class SlashShuffleCommandHandlerTests {
     }
 
     @Test
-    void handle_repliesWithNotImplementedMessage() {
+    void handle_repliesEphemeralWhenQueueHasOneOrLessTracks() {
+        long guildId = 42L;
+        // Use a spy on a real TrackScheduler so the public `queue` field is properly initialised
+        GuildMusicManager musicManager = mock(GuildMusicManager.class);
+        TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
+        // queue is empty by default → size 0 <= 1 → guard fires
+        GuildMusicManager manager = mock(GuildMusicManager.class);
+        when(manager.getTrackScheduler()).thenReturn(scheduler);
+        when(registry.getOrCreate(guildId)).thenReturn(manager);
+
         SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class, Answers.RETURNS_DEEP_STUBS);
         Guild guild = mock(Guild.class, Answers.RETURNS_DEEP_STUBS);
+        when(guild.getIdLong()).thenReturn(guildId);
 
         handler.handle(event, guild);
 
-        verify(event).reply("🚧 The /shuffle command is not implemented yet. Stay tuned!");
-        verify(event.reply("🚧 The /shuffle command is not implemented yet. Stay tuned!")).setEphemeral(true);
+        verify(event).reply("There needs to be at least 2 tracks in the queue to shuffle!");
+        verify(event.reply("There needs to be at least 2 tracks in the queue to shuffle!")).setEphemeral(true);
+        verify(scheduler, never()).shuffle();
+    }
+
+    @Test
+    void handle_shufflesAndRepliesWhenQueueHasMoreThanOneTrack() {
+        long guildId = 42L;
+        // Use a spy so the public `queue` field is initialised and we can verify shuffle()
+        GuildMusicManager musicManager = mock(GuildMusicManager.class);
+        TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
+        doNothing().when(scheduler).shuffle();
+        scheduler.queue.offer(mock(Track.class));
+        scheduler.queue.offer(mock(Track.class));
+        GuildMusicManager manager = mock(GuildMusicManager.class);
+        when(manager.getTrackScheduler()).thenReturn(scheduler);
+        when(registry.getOrCreate(guildId)).thenReturn(manager);
+
+        SlashCommandInteractionEvent event = mock(SlashCommandInteractionEvent.class, Answers.RETURNS_DEEP_STUBS);
+        Guild guild = mock(Guild.class, Answers.RETURNS_DEEP_STUBS);
+        when(guild.getIdLong()).thenReturn(guildId);
+
+        handler.handle(event, guild);
+
+        verify(scheduler).shuffle();
+        verify(event).reply("🔀 Queue shuffled!");
     }
 }
-
