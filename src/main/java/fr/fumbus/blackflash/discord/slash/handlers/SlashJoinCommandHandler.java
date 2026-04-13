@@ -81,19 +81,23 @@ public class SlashJoinCommandHandler implements SlashCommandHandler {
             event.replyEmbeds(BotEmbeds.memberNotInVoiceChannel()).setEphemeral(true).queue();
             return false;
         }
+
         final GuildVoiceState memberVoiceState = member.getVoiceState();
         if (isNull(memberVoiceState) || !memberVoiceState.inAudioChannel() || isNull(memberVoiceState.getChannel())) {
             event.replyEmbeds(BotEmbeds.memberNotInVoiceChannel()).setEphemeral(true).queue();
             return false;
         }
+
         final String channelName = memberVoiceState.getChannel().getName();
         event.getJDA().getDirectAudioController().connect(memberVoiceState.getChannel());
         registry.getOrCreate(member.getGuild().getIdLong());
+
         if (nonNull(onSuccess)) {
             event.replyEmbeds(BotEmbeds.joined(channelName)).queue(_ -> onSuccess.run());
         } else {
             event.replyEmbeds(BotEmbeds.joined(channelName)).queue();
         }
+
         return true;
     }
 }

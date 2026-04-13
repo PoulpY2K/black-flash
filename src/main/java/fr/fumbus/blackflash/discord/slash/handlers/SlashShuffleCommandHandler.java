@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_SHUFFLE;
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.DESCRIPTION_SHUFFLE;
+import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandUtils.withActiveManager;
 
 /**
  * @author Jérémy Laurent <poulpy2k>
@@ -40,14 +41,16 @@ public class SlashShuffleCommandHandler implements SlashCommandHandler {
 
     @Override
     public void handle(SlashCommandInteractionEvent event, Guild guild) {
-        var scheduler = registry.getOrCreate(guild.getIdLong()).getTrackScheduler();
+        withActiveManager(registry, guild, event, manager -> {
+            final var scheduler = manager.getTrackScheduler();
 
-        if (queueHasOneOrLessTrack(scheduler)) {
-            event.replyEmbeds(BotEmbeds.shuffleNotEnoughTracks()).setEphemeral(true).queue();
-            return;
-        }
+            if (queueHasOneOrLessTrack(scheduler)) {
+                event.replyEmbeds(BotEmbeds.shuffleNotEnoughTracks()).setEphemeral(true).queue();
+                return;
+            }
 
-        scheduler.shuffle();
-        event.replyEmbeds(BotEmbeds.shuffled()).queue();
+            scheduler.shuffle();
+            event.replyEmbeds(BotEmbeds.shuffled()).queue();
+        });
     }
 }
