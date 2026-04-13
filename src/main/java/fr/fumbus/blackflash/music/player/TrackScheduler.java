@@ -38,6 +38,10 @@ public class TrackScheduler {
     @Setter
     private volatile LoopMode loopMode = LoopMode.DISABLED;
 
+    private static boolean isFirstTrackSameAsPlayed(Track currentTrack, List<Track> tracks) {
+        return tracks.size() > 1 && tracks.getFirst().getEncoded().equals(currentTrack.getEncoded());
+    }
+
     @Synchronized
     public void enqueue(Track track) {
         guildMusicManager.getPlayer().ifPresentOrElse(
@@ -157,10 +161,6 @@ public class TrackScheduler {
             }
             case DISABLED -> startNextQueueTrack();
         }
-    }
-
-    private static boolean isFirstTrackSameAsPlayed(Track currentTrack, List<Track> tracks) {
-        return tracks.size() > 1 && tracks.getFirst().getEncoded().equals(currentTrack.getEncoded());
     }
 }
 

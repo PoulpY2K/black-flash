@@ -5,6 +5,7 @@ import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import fr.fumbus.blackflash.music.player.LoopMode;
 import fr.fumbus.blackflash.music.player.TrackScheduler;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_LOOP;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,21 +39,21 @@ class SlashLoopCommandHandlerTests {
     }
 
     @Test
-    void handle_cyclesLoopModeFromDisabledToTrackAndReplies() {
-        assertLoopCycle(LoopMode.DISABLED, LoopMode.TRACK, "🔂 Loop track enabled!");
+    void handle_cyclesLoopModeFromDisabledToTrack() {
+        assertLoopCycle(LoopMode.DISABLED, LoopMode.TRACK);
     }
 
     @Test
-    void handle_cyclesLoopModeFromTrackToQueueAndReplies() {
-        assertLoopCycle(LoopMode.TRACK, LoopMode.QUEUE, "🔁 Loop queue enabled!");
+    void handle_cyclesLoopModeFromTrackToQueue() {
+        assertLoopCycle(LoopMode.TRACK, LoopMode.QUEUE);
     }
 
     @Test
-    void handle_cyclesLoopModeFromQueueToDisabledAndReplies() {
-        assertLoopCycle(LoopMode.QUEUE, LoopMode.DISABLED, "Loop disabled!");
+    void handle_cyclesLoopModeFromQueueToDisabled() {
+        assertLoopCycle(LoopMode.QUEUE, LoopMode.DISABLED);
     }
 
-    private void assertLoopCycle(LoopMode currentMode, LoopMode expectedMode, String expectedReply) {
+    private void assertLoopCycle(LoopMode currentMode, LoopMode expectedMode) {
         long guildId = 42L;
         TrackScheduler scheduler = mock(TrackScheduler.class);
         when(scheduler.getLoopMode()).thenReturn(currentMode);
@@ -66,7 +68,6 @@ class SlashLoopCommandHandlerTests {
         handler.handle(event, guild);
 
         verify(scheduler).setLoopMode(expectedMode);
-        verify(event).reply(expectedReply);
+        verify(event).replyEmbeds(any(MessageEmbed.class));
     }
 }
-

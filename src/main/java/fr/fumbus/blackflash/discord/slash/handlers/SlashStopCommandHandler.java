@@ -1,5 +1,6 @@
 package fr.fumbus.blackflash.discord.slash.handlers;
 
+import fr.fumbus.blackflash.discord.BotEmbeds;
 import fr.fumbus.blackflash.discord.slash.SlashCommandHandler;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class SlashStopCommandHandler implements SlashCommandHandler {
     @Override
     public void handle(SlashCommandInteractionEvent event, Guild guild) {
         registry.getOrCreate(guild.getIdLong()).stop();
-        event.reply("Stopped the current track!").queue();
+        event.replyEmbeds(BotEmbeds.stopped()).queue();
     }
 }
 

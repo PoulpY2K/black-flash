@@ -1,5 +1,6 @@
 package fr.fumbus.blackflash.discord.slash.handlers;
 
+import fr.fumbus.blackflash.discord.BotEmbeds;
 import fr.fumbus.blackflash.discord.slash.SlashCommandHandler;
 import fr.fumbus.blackflash.discord.slash.utils.SlashCommandUtils;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
@@ -13,7 +14,8 @@ import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import org.springframework.stereotype.Component;
 
-import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.*;
+import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_JOIN;
+import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.DESCRIPTION_JOIN;
 import static java.util.Objects.nonNull;
 
 /**
@@ -46,26 +48,24 @@ public class SlashJoinCommandHandler implements SlashCommandHandler {
     @Override
     public void handle(SlashCommandInteractionEvent event, Guild guild) {
         if (SlashCommandUtils.isBotInVoiceChannel(guild)) {
-            event.reply(MESSAGE_BOT_ALREADY_IN_VOICE_CHANNEL).setEphemeral(true).queue();
+            event.replyEmbeds(BotEmbeds.alreadyInVoiceChannel()).setEphemeral(true).queue();
             return;
         }
         joinChannel(event);
     }
 
-    /**
-     * Connects the bot to the invoking member's voice channel and initialises the music manager.
-     * Called directly by {@link SlashPlayCommandHandler} when the bot is not yet in a channel.
-     */
     public void joinChannel(SlashCommandInteractionEvent event) {
         final Member member = event.getMember();
+        String channelName = "DEFAULT_CHANNEL";
         if (nonNull(member)) {
             final GuildVoiceState memberVoiceState = member.getVoiceState();
             if (nonNull(memberVoiceState) && memberVoiceState.inAudioChannel() && nonNull(memberVoiceState.getChannel())) {
+                channelName = memberVoiceState.getChannel().getName();
                 event.getJDA().getDirectAudioController().connect(memberVoiceState.getChannel());
             }
             registry.getOrCreate(member.getGuild().getIdLong());
         }
-        event.reply("Joining your channel!").queue();
+        event.replyEmbeds(BotEmbeds.joined(channelName)).queue();
     }
 }
 

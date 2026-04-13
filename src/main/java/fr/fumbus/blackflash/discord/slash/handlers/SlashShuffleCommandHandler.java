@@ -1,5 +1,6 @@
 package fr.fumbus.blackflash.discord.slash.handlers;
 
+import fr.fumbus.blackflash.discord.BotEmbeds;
 import fr.fumbus.blackflash.discord.slash.SlashCommandHandler;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import fr.fumbus.blackflash.music.player.TrackScheduler;
@@ -28,6 +29,10 @@ public class SlashShuffleCommandHandler implements SlashCommandHandler {
 
     private final GuildMusicManagerRegistry registry;
 
+    private static boolean queueHasOneOrLessTrack(TrackScheduler scheduler) {
+        return scheduler.queue.size() <= 1;
+    }
+
     @Override
     public CommandData commandData() {
         return COMMAND_DATA;
@@ -38,16 +43,11 @@ public class SlashShuffleCommandHandler implements SlashCommandHandler {
         var scheduler = registry.getOrCreate(guild.getIdLong()).getTrackScheduler();
 
         if (queueHasOneOrLessTrack(scheduler)) {
-            event.reply("There needs to be at least 2 tracks in the queue to shuffle!").setEphemeral(true).queue();
+            event.replyEmbeds(BotEmbeds.shuffleNotEnoughTracks()).setEphemeral(true).queue();
             return;
         }
 
         scheduler.shuffle();
-        event.reply("🔀 Queue shuffled!").queue();
-    }
-
-    private static boolean queueHasOneOrLessTrack(TrackScheduler scheduler) {
-        return scheduler.queue.size() <= 1;
+        event.replyEmbeds(BotEmbeds.shuffled()).queue();
     }
 }
-

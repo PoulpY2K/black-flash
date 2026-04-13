@@ -5,18 +5,21 @@ import fr.fumbus.blackflash.music.manager.GuildMusicManager;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import fr.fumbus.blackflash.music.player.TrackScheduler;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_SHUFFLE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,10 +42,8 @@ class SlashShuffleCommandHandlerTests {
     @Test
     void handle_repliesEphemeralWhenQueueHasOneOrLessTracks() {
         long guildId = 42L;
-        // Use a spy on a real TrackScheduler so the public `queue` field is properly initialised
         GuildMusicManager musicManager = mock(GuildMusicManager.class);
         TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
-        // queue is empty by default → size 0 <= 1 → guard fires
         GuildMusicManager manager = mock(GuildMusicManager.class);
         when(manager.getTrackScheduler()).thenReturn(scheduler);
         when(registry.getOrCreate(guildId)).thenReturn(manager);
@@ -53,15 +54,15 @@ class SlashShuffleCommandHandlerTests {
 
         handler.handle(event, guild);
 
-        verify(event).reply("There needs to be at least 2 tracks in the queue to shuffle!");
-        verify(event.reply("There needs to be at least 2 tracks in the queue to shuffle!")).setEphemeral(true);
+        ArgumentCaptor<MessageEmbed> embedCaptor = ArgumentCaptor.forClass(MessageEmbed.class);
+        verify(event).replyEmbeds(embedCaptor.capture());
+        verify(event.replyEmbeds(embedCaptor.getValue())).setEphemeral(true);
         verify(scheduler, never()).shuffle();
     }
 
     @Test
     void handle_shufflesAndRepliesWhenQueueHasMoreThanOneTrack() {
         long guildId = 42L;
-        // Use a spy so the public `queue` field is initialised and we can verify shuffle()
         GuildMusicManager musicManager = mock(GuildMusicManager.class);
         TrackScheduler scheduler = spy(new TrackScheduler(musicManager));
         doNothing().when(scheduler).shuffle();
@@ -78,6 +79,6 @@ class SlashShuffleCommandHandlerTests {
         handler.handle(event, guild);
 
         verify(scheduler).shuffle();
-        verify(event).reply("🔀 Queue shuffled!");
+        verify(event).replyEmbeds(any(MessageEmbed.class));
     }
 }

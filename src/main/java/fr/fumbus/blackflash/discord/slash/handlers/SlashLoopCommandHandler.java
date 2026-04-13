@@ -1,5 +1,6 @@
 package fr.fumbus.blackflash.discord.slash.handlers;
 
+import fr.fumbus.blackflash.discord.BotEmbeds;
 import fr.fumbus.blackflash.discord.slash.SlashCommandHandler;
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import fr.fumbus.blackflash.music.player.LoopMode;
@@ -38,14 +39,6 @@ public class SlashLoopCommandHandler implements SlashCommandHandler {
         final var scheduler = registry.getOrCreate(guild.getIdLong()).getTrackScheduler();
         final LoopMode newMode = scheduler.getLoopMode().next();
         scheduler.setLoopMode(newMode);
-
-        String message = switch (newMode) {
-            case TRACK -> "🔂 Loop track enabled!";
-            case QUEUE -> "🔁 Loop queue enabled!";
-            default -> "Loop disabled!";
-        };
-
-        event.reply(message).queue();
+        event.replyEmbeds(BotEmbeds.loopMode(newMode)).queue();
     }
 }
-

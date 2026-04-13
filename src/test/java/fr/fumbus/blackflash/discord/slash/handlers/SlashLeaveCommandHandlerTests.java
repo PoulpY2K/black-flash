@@ -2,6 +2,7 @@ package fr.fumbus.blackflash.discord.slash.handlers;
 
 import fr.fumbus.blackflash.music.manager.GuildMusicManagerRegistry;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
@@ -14,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static fr.fumbus.blackflash.discord.slash.utils.SlashCommandConstants.COMMAND_LEAVE;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,7 +46,6 @@ class SlashLeaveCommandHandlerTests {
 
         verify(event.getJDA().getDirectAudioController()).disconnect(guild);
         verify(registry).remove(guildId);
-        verify(event).reply("Leaving the channel!");
+        verify(event).replyEmbeds(any(MessageEmbed.class));
     }
 }
-
