@@ -16,7 +16,7 @@ external [Lavalink v4](https://github.com/lavalink-devs/Lavalink) node.
 
 ## ✨ Features
 
-- 🎵 **Music playback** from YouTube, Spotify, SoundCloud, Bandcamp, Twitch, Vimeo, and more
+- 🎵 **Music playback** from YouTube (via `yt-dlp`), Spotify, SoundCloud, Bandcamp, Twitch, Vimeo, and more
 - 🔗 **Lavalink v4** integration for performant, high-quality audio streaming
 - 🔒 **DAVE E2E audio encryption** — Discord's end-to-end encrypted voice protocol
 - ⚡ **Virtual threads** — leverages Java 25 virtual threads for efficient async I/O
@@ -86,8 +86,13 @@ ELASTIC_PASSWORD=your-elastic-password
 docker compose -f docker-compose-dev.yml up -d
 ```
 
-This starts a Lavalink v4 (Alpine) container on `127.0.0.1:2333` with the configuration from `lavalink/application.yml`
-and pre-downloaded plugins.
+This builds (via `lavalink/Dockerfile`) and starts a Lavalink v4 (Alpine) container — extended with `yt-dlp` for
+YouTube playback — on `127.0.0.1:2333`, using the configuration from `lavalink/application.yml` and pre-downloaded
+plugins. Rebuild the image after pulling changes to `lavalink/Dockerfile` with:
+
+```bash
+docker compose -f docker-compose-dev.yml up -d --build
+```
 
 ### 4. Build and run
 
@@ -135,11 +140,38 @@ Spring Boot DevTools is included — the application auto-restarts on classpath 
   `TrackScheduler` and queue
 - **External Lavalink node** — audio processing is offloaded to a dedicated Lavalink v4 server communicating over
   WebSocket
+- **YouTube playback via yt-dlp** — the `dev.lavalink.youtube` plugin is broken by an upstream YouTube change (see
+  [Troubleshooting](#-troubleshooting)); YouTube playback goes through LavaSrc's `ytdlp` source instead, backed by the
+  `yt-dlp` binary bundled in `lavalink/Dockerfile`
 - **Log4j2** — configured via `spring-boot-starter-log4j2` (not SLF4J + Logback)
 - **Virtual threads** — enabled via `spring.threads.virtual.enabled: true` for Spring MVC / `@Async`; JDA events
   dispatched on `Executors.newVirtualThreadPerTaskExecutor()` — every slash command gets its own virtual thread
 - **Separate management port** — actuator endpoints are served on port `54001` (configured via `management.server.port`)
 - **DAVE E2E audio encryption** — Discord's end-to-end encrypted voice protocol via `jdave-api`
+
+---
+
+## 🩹 Troubleshooting
+
+### YouTube tracks fail to play (`AllClientsFailedException`, "Must find sig function", empty `available types:`)
+
+As of August 2026, YouTube serves SABR-only responses to the `dev.lavalink.youtube` plugin in many regions, leaving no
+cipherable/direct stream URL to play — this affects everyone, not just this bot, and is tracked upstream at
+[lavalink-devs/youtube-source#240](https://github.com/lavalink-devs/youtube-source/issues/240). Neither OAuth, the
+latest snapshot build, nor a remote cipher server ([yt-cipher](https://github.com/kikkia/yt-cipher)) resolve it.
+
+**Fix**: this project ships a custom `lavalink/Dockerfile` that bundles `yt-dlp`, and `lavalink/application.yml` routes
+YouTube playback through LavaSrc's `ytdlp` source instead of the `dev.lavalink.youtube` plugin. If you pulled an older
+version of `lavalink/plugins/`, delete any leftover `youtube-plugin-*.jar` in that folder (Lavalink loads every jar
+present regardless of `lavalink.plugins` config) and rebuild the image:
+
+```bash
+rm lavalink/plugins/youtube-plugin-*.jar
+docker compose -f docker-compose-dev.yml up -d --build
+```
+
+If yt-dlp itself starts failing (YouTube extractor changes), update it inside the running container or rebuild the
+image to pull the latest `yt-dlp` release.
 
 ---
 
