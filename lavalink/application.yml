@@ -4,28 +4,12 @@ server: # REST and WS server
   http2:
     enabled: true # Whether to enable HTTP/2 support
 plugins:
-  youtube:
-    enabled: true # Whether this source can be used.
-    allowSearch: true # Whether "ytsearch:" and "ytmsearch:" can be used.
-    allowDirectVideoIds: true # Whether just video IDs can match. If false, only complete URLs will be loaded.
-    allowDirectPlaylistIds: true # Whether just playlist IDs can match. If false, only complete URLs will be loaded.
-    # The clients to use for track loading. See below for a list of valid clients.
-    # Clients are queried in the order they are given (so the first client is queried first and so on...)
-    clients:
-      - MUSIC
-      - TV
-      - WEB
-      - MWEB
-      - WEBEMBEDDED
-    oauth:
-      enabled: true
-    # Delegates signature/n-parameter deciphering to a remote yt-cipher service instead of parsing
-    # YouTube's player script locally. Helps when local cipher extraction breaks (e.g. "Must find sig
-    # function from script"). Using the public instance here for testing; self-host for reliability/SLA.
-    # See https://github.com/kikkia/yt-cipher and https://github.com/lavalink-devs/youtube-source#using-a-remote-cipher-server
-    remoteCipher:
-      url: "https://cipher.kikkia.dev/"
-      userAgent: "blackflash"
+  # The dev.lavalink.youtube plugin config below is intentionally disabled/removed from
+  # lavalink.plugins (see bottom of file): as of Aug 2026 it can no longer play most YouTube
+  # videos due to an upstream change (SABR-only responses with no cipherable stream URLs) that
+  # persists even with a remote cipher server, OAuth, and the latest snapshot build.
+  # See https://github.com/lavalink-devs/youtube-source/issues/240
+  # Playback now goes through LavaSrc's ytdlp source instead (see plugins.lavasrc.ytdlp below).
   lavasrc:
     providers: # Custom providers for track loading. This is the default
       #- "spsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
@@ -39,16 +23,19 @@ plugins:
       deezer: false # Enable Deezer source
       yandexmusic: false # Enable Yandex Music source
       flowerytts: false # Enable Flowery TTS source
-      youtube: true # Enable YouTube search source (https://github.com/topi314/LavaSearch)
+      # Disabled: LavaSearch's youtube metadata source hard-requires the (now removed)
+      # dev.lavalink.youtube plugin to be present, and isn't used by this bot anyway.
+      youtube: false # Enable YouTube search source (https://github.com/topi314/LavaSearch)
       vkmusic: false # Enable Vk Music source
       tidal: false # Enable Tidal source
       qobuz: false # Enabled qobuz source
-      ytdlp: false # Enable yt-dlp source
+      ytdlp: true # Enable yt-dlp source
       jiosaavn: false # Enable JioSaavn source
     lyrics-sources:
       spotify: true # Enable Spotify lyrics source
       deezer: false # Enable Deezer lyrics source
-      youtube: true # Enable YouTube lyrics source
+      # Disabled: also depends on the (now removed) dev.lavalink.youtube plugin; unused by this bot.
+      youtube: false # Enable YouTube lyrics source
       yandexmusic: false # Enable Yandex Music lyrics source
       vkmusic: false # Enable Vk Music lyrics source
       lrcLib: false # Enable LRC Library lyrics source (https://lrclib.net)
@@ -66,13 +53,21 @@ plugins:
     youtube:
       countryCode: "FR" # the country code you want to use for searching & lyrics. See https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
       language: "fr" # the language code you want to use for searching & lyrics. See https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes
+    # yt-dlp is used as the direct YouTube playback source because the dev.lavalink.youtube plugin
+    # (see below) currently cannot play most videos due to an upstream YouTube change (SABR-only
+    # responses with no signature-cipherable stream URLs). yt-dlp bypasses this via its own extractor,
+    # which the community patches independently and usually faster. Requires yt-dlp to be present in
+    # the Lavalink image (see lavalink/Dockerfile).
+    ytdlp:
+      path: "yt-dlp" # the path to the yt-dlp executable.
+      searchLimit: 10 # How many search results should be returned
+      mixPlaylistLoadLimit: 25 # The number of tracks each for mix playlists. Default is 25 tracks
+      playlistLoadLimit: 1000 # The number of tracks each for normal playlists. Default is 1000 tracks
 lavalink:
   plugins:
     - dependency: "com.github.topi314.lavasearch:lavasearch-plugin:1.0.0"
       repository: "https://maven.lavalink.dev/releases" # this is optional for lavalink v4.0.0-beta.5 or greater
       snapshot: false # set to true if you want to use snapshot builds (see below)
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2"
-      snapshot: false # Set to true if you want to use a snapshot version.
     - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
       repository: "https://maven.lavalink.dev/releases" # this is optional for lavalink v4.0.0-beta.5 or greater
       snapshot: false # set to true if you want to use snapshot builds (see below)

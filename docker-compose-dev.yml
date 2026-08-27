@@ -1,7 +1,9 @@
 services:
   lavalink:
-    # pin the image version to Lavalink v4
-    image: ghcr.io/lavalink-devs/lavalink:4-alpine
+    # built from lavalink/Dockerfile: Lavalink v4 (alpine) + yt-dlp for LavaSrc's ytdlp source
+    build:
+      context: ./lavalink
+      dockerfile: Dockerfile
     container_name: lavalink
     restart: unless-stopped
     mem_limit: 6G
