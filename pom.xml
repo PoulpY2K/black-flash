@@ -58,7 +58,7 @@
         <!-- Dependencies -->
         <mapstruct.version>1.6.3</mapstruct.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <openapi-generator-maven-plugin.version>7.24.0</openapi-generator-maven-plugin.version>
+        <openapi-generator-maven-plugin.version>7.25.0</openapi-generator-maven-plugin.version>
         <jda.version>6.5.0</jda.version>
         <lavalink-client.version>3.4.0</lavalink-client.version>
         <jdave-api.version>0.1.8</jdave-api.version>
